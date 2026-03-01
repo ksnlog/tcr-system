@@ -1,0 +1,44 @@
+2025-08-27 21:32:35.375 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vsliveshare.vsliveshare' wants API proposal 'notebookCellExecutionState' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-27 21:32:35.410 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.gather' wants API proposal 'notebookCellExecutionState' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-27 21:32:35.412 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.vscode-pylance' wants API proposal 'mcpConfigurationProvider' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-27 21:32:35.670 [warning] Creation of workbench contribution 'workbench.contrib.chatSetup' took 24ms.
+2025-08-27 21:32:37.093 [info] Started local extension host with pid 7613.
+2025-08-27 21:32:53.982 [info] Extension host (LocalProcess pid: 7613) is unresponsive.
+2025-08-27 21:33:05.320 [error] [Extension Host] (node:7613) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `exe --trace-deprecation ...` to show where the warning was created)
+2025-08-27 21:33:05.922 [info] Extension host (LocalProcess pid: 7613) is responsive.
+2025-08-27 21:33:07.998 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2025-08-27 21:33:08.086 [info] [perf] Render performance baseline is 129ms
+2025-08-27 21:33:10.932 [info] Extension host (LocalProcess pid: 7613) is unresponsive.
+2025-08-27 21:33:16.072 [info] UNRESPONSIVE extension host: starting to profile NOW
+2025-08-27 21:33:17.905 [info] Extension host (LocalProcess pid: 7613) is responsive.
+2025-08-27 21:33:17.911 [info] UNRESPONSIVE extension host: received responsive event and cancelling profiling session
+2025-08-27 21:33:20.333 [info] Extension host (LocalProcess pid: 7613) is unresponsive.
+2025-08-27 21:33:20.373 [warning] UNRESPONSIVE extension host: 'vscode.github' took 33.43718868980199% of 392.039ms, saved PROFILE here: 'file:///tmp/exthost-660337.cpuprofile'
+2025-08-27 21:33:23.259 [info] UNRESPONSIVE extension host: starting to profile NOW
+2025-08-27 21:33:27.578 [info] Extension host (LocalProcess pid: 7613) is responsive.
+2025-08-27 21:33:27.593 [info] UNRESPONSIVE extension host: received responsive event and cancelling profiling session
+2025-08-27 21:33:40.516 [error] [UriError]: Scheme contains illegal characters.: Error: [UriError]: Scheme contains illegal characters.
+    at R7 (file:///usr/share/code/resources/app/out/main.js:30:63994)
+    at new sd (file:///usr/share/code/resources/app/out/main.js:30:67374)
+    at new Ur (file:///usr/share/code/resources/app/out/main.js:30:68812)
+    at sd.revive (file:///usr/share/code/resources/app/out/main.js:30:68589)
+    at G4.call (file:///usr/share/code/resources/app/out/main.js:85:104940)
+    at If.s (file:///usr/share/code/resources/app/out/main.js:31:14859)
+    at If.q (file:///usr/share/code/resources/app/out/main.js:31:14382)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:31:13784)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D (file:///usr/share/code/resources/app/out/main.js:30:2443)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2660)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:28:4852)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2591)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:28:5040)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2591)
+    at z (file:///usr/share/code/resources/app/out/main.js:28:7334)
+    at IpcMainImpl.i (file:///usr/share/code/resources/app/out/main.js:33:21024)
+    at IpcMainImpl.emit (node:events:518:28)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:106370)
+    at Session.emit (node:events:518:28)
+2025-08-27 21:34:13.605 [error] An unknown error occurred. Please consult the log for more details.

@@ -1,0 +1,38 @@
+2025-08-27 21:32:44.338 [info] Extension host with pid 7613 started
+2025-08-27 21:32:45.308 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2025-08-27 21:32:45.691 [info] ExtensionService#_doActivateExtension vscode.ipynb, startup: false, activationEvent: 'onNotebookSerializer:jupyter-notebook'
+2025-08-27 21:32:46.424 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2025-08-27 21:32:48.448 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2025-08-27 21:32:49.138 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2025-08-27 21:32:50.196 [info] ExtensionService#_doActivateExtension GitHub.codespaces, startup: false, activationEvent: 'onNotebook:jupyter-notebook'
+2025-08-27 21:33:05.306 [info] ExtensionService#_doActivateExtension ms-toolsai.jupyter, startup: false, activationEvent: 'onNotebook:jupyter-notebook'
+2025-08-27 21:33:05.317 [info] ExtensionService#_doActivateExtension ms-toolsai.vscode-jupyter-cell-tags, startup: false, activationEvent: 'onNotebook:jupyter-notebook'
+2025-08-27 21:33:05.342 [info] ExtensionService#_doActivateExtension ms-toolsai.vscode-jupyter-slideshow, startup: false, activationEvent: 'onNotebook:jupyter-notebook'
+2025-08-27 21:33:16.496 [info] Eager extensions activated
+2025-08-27 21:33:16.755 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2025-08-27 21:33:16.839 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2025-08-27 21:33:17.146 [info] ExtensionService#_doActivateExtension ms-python.python, startup: false, activationEvent: 'onLanguage:python', root cause: ms-python.debugpy
+2025-08-27 21:33:20.382 [info] ExtensionService#_doActivateExtension ms-python.vscode-pylance, startup: false, activationEvent: 'onLanguage:python'
+2025-08-27 21:33:26.747 [info] ExtensionService#_doActivateExtension ms-python.vscode-python-envs, startup: false, activationEvent: 'onLanguage:python'
+2025-08-27 21:33:27.209 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2025-08-27 21:33:27.798 [info] ExtensionService#_doActivateExtension ms-toolsai.jupyter-renderers, startup: false, activationEvent: 'api', root cause: ms-toolsai.jupyter
+2025-08-27 21:33:35.571 [info] ExtensionService#_doActivateExtension ms-python.debugpy, startup: false, activationEvent: 'onLanguage:python'
+2025-08-27 21:33:40.255 [info] ExtensionService#_doActivateExtension vscode.terminal-suggest, startup: false, activationEvent: 'onTerminalShellIntegration:*'
+2025-08-27 21:34:13.584 [error] Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    at ChildProcess.<anonymous> (/home/mailboxkishan/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    at ChildProcess.emit (node:events:530:35)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:293:12)
+2025-08-27 21:41:26.103 [info] Extension host terminating: renderer closed the MessagePort
+2025-08-27 21:41:26.952 [error] TypeError: Cannot read properties of undefined (reading 'subscriptions')
+    at Object.K [as deactivate] (/home/mailboxkishan/.vscode/extensions/ms-python.vscode-python-envs-1.2.0-linux-x64/dist/extension.js:2:618887)
+    at LZ.eb (file:///usr/share/code/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:11836)
+    at file:///usr/share/code/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:9986
+    at Array.map (<anonymous>)
+    at LZ.$ (file:///usr/share/code/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:9974)
+    at LZ.terminate (file:///usr/share/code/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:10217)
+    at E3.terminate (file:///usr/share/code/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:118:914)
+    at ws (file:///usr/share/code/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:388:10154)
+    at MessagePortMain.<anonymous> (file:///usr/share/code/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:388:6693)
+    at MessagePortMain.emit (node:events:518:28)
+    at Object.MessagePortMain._internalPort.emit (node:electron/js2c/utility_init:2:2949)
+2025-08-27 21:41:26.967 [info] Extension host with pid 7613 exiting with code 0

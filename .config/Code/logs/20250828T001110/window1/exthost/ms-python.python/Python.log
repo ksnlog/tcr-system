@@ -1,0 +1,10 @@
+2025-08-28 00:11:53.840 [info] Experiment 'pythonSurveyNotificationcf' is active
+2025-08-28 00:11:53.840 [info] Native locator: Refresh started
+2025-08-28 00:11:53.840 [info] Native locator: Refresh started
+2025-08-28 00:11:53.840 [info] Skipping ActivatedEnv Detection:  process.env.VSCODE_CLI !== '1'
+2025-08-28 00:12:15.329 [info] > conda info --json
+2025-08-28 00:12:16.150 [info] Native locator: Refresh finished in 35914 ms
+2025-08-28 00:12:16.163 [info] Python interpreter path: /usr/bin/python3
+2025-08-28 00:12:28.429 [info] CreateEnv Trigger - Workspace not found for Untitled-1
+2025-08-28 00:12:37.392 [info] Starting Pylance language server.
+2025-08-28 00:12:49.967 [info] Send text to terminal: /usr/bin/python3 Untitled-1

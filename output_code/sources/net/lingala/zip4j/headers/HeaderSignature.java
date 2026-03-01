@@ -1,0 +1,28 @@
+package net.lingala.zip4j.headers;
+/* loaded from: /home/mailboxkishan/dex_files/classes.dex */
+public enum HeaderSignature {
+    LOCAL_FILE_HEADER(67324752),
+    EXTRA_DATA_RECORD(134695760),
+    CENTRAL_DIRECTORY(33639248),
+    END_OF_CENTRAL_DIRECTORY(101010256),
+    TEMPORARY_SPANNING_MARKER(808471376),
+    DIGITAL_SIGNATURE(84233040),
+    ARCEXTDATREC(134630224),
+    SPLIT_ZIP(134695760),
+    ZIP64_END_CENTRAL_DIRECTORY_LOCATOR(117853008),
+    ZIP64_END_CENTRAL_DIRECTORY_RECORD(101075792),
+    ZIP64_EXTRA_FIELD_SIGNATURE(1),
+    AES_EXTRA_DATA_RECORD(39169);
+    
+
+    /* renamed from: d  reason: collision with root package name */
+    private long f1425d;
+
+    HeaderSignature(long j2) {
+        this.f1425d = j2;
+    }
+
+    public long a() {
+        return this.f1425d;
+    }
+}

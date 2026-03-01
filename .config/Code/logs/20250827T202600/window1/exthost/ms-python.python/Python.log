@@ -1,0 +1,8 @@
+2025-08-27 20:32:27.724 [info] Experiment 'pythonSurveyNotificationcf' is active
+2025-08-27 20:32:27.753 [info] Native locator: Refresh started
+2025-08-27 20:32:28.090 [info] Native locator: Refresh started
+2025-08-27 20:32:28.178 [info] Skipping ActivatedEnv Detection:  process.env.VSCODE_CLI !== '1'
+2025-08-27 20:32:28.180 [info] Skipping ActivatedEnv Detection:  process.env.VSCODE_CLI !== '1'
+2025-08-27 20:32:28.688 [info] Native locator: Refresh finished in 921 ms
+2025-08-27 20:32:28.913 [info] Python interpreter path: /bin/python3
+2025-08-27 20:32:34.432 [info] Starting Pylance language server.

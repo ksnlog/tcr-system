@@ -1,0 +1,35 @@
+Visual Studio Code (1.103.2, undefined, desktop)
+Jupyter Extension Version: 2025.7.0.
+Python Extension Version: 2025.12.0.
+Python Environment Extension Version: 1.2.0.
+Pylance Extension Version: 2025.7.1.
+Platform: linux (x64).
+Home = /home/mailboxkishan
+Temp Storage folder ~/.config/Code/User/globalStorage/ms-toolsai.jupyter/version-2025.7.0
+No workspace folder opened.
+00:12:27.188 [info] Starting Kernel (Python Path: /usr/bin/python3, Unknown, 3.11.2) for '~/Python/Untitled-1.ipynb' (disableUI=true)
+00:12:29.754 [warn] Failed to get activated env vars for /usr/bin/python3 in 1768ms
+00:12:30.037 [info] Process Execution: /usr/bin/python3 -c "import site;print("USER_BASE_VALUE");print(site.USER_BASE);print("USER_BASE_VALUE");"
+00:12:30.178 [warn] Failed to get activated env vars for /usr/bin/python3 in 2183ms
+00:12:30.512 [info] Process Execution: /usr/bin/python3 -m pip list
+00:12:30.677 [info] Process Execution: /usr/bin/python3 -c "import ipykernel; print(ipykernel.__version__); print("5dc3a68c-e34e-4080-9c3e-2a532b2ccb4d"); print(ipykernel.__file__)"
+00:12:30.871 [info] Process Execution: /usr/bin/python3 -m ipykernel_launcher --f=/run/user/1000/jupyter/runtime/kernel-v38c823287bcdf22fce105dc2619eb45c659c5cf87.json
+    > cwd: ~/Python
+00:12:31.346 [error] Disposing kernel process due to an error Error: The kernel died. Error: ... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = 
+00:12:31.346 [error] 
+00:12:31.395 [error] Failed to connect raw kernel session: Error: The kernel died. Error: ... View Jupyter [log](command:jupyter.viewOutput) for further details.
+00:12:31.410 [error] Failed to connect raw kernel session: Error: The kernel died. Error: ... View Jupyter [log](command:jupyter.viewOutput) for further details.
+00:12:31.417 [warn] Failed to shutdown kernel, .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher TypeError: Cannot read properties of undefined (reading 'dispose')
+    at j_.shutdown (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:309:13632)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at B_.shutdown (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:309:22453)
+00:12:31.445 [warn] Error occurred while trying to start the kernel, options.disableUI=true Error: The kernel died. Error: ... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = 
+00:16:02.817 [info] Dispose Kernel '~/Python/Untitled-1.ipynb' associated with '~/Python/Untitled-1.ipynb'

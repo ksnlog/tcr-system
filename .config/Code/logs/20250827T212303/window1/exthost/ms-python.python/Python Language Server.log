@@ -1,0 +1,28 @@
+2025-08-27 21:23:36.744 [info] (Client) Pylance client (2025.7.1) started with python extension (2025.12.0)
+2025-08-27 21:23:42.637 [info] (7018) Server root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 21:23:42.677 [info] (7018) Pylance language server 2025.7.1 (pyright version 1.1.403, commit 8b02aa84) starting
+2025-08-27 21:23:43.823 [info] (7018) Starting Mcp server id:3172 ...
+2025-08-27 21:23:43.896 [info] (7018) Starting service instance "<default>" for workspace ""
+2025-08-27 21:23:44.343 [info] (7018) Setting environmentName for service "<default>": "3.11.2 (global)"
+2025-08-27 21:23:44.344 [info] (7018) Setting pythonPath for service "<default>": "/usr/bin/python3"
+2025-08-27 21:23:44.344 [info] (7018) No include entries specified; assuming /<default workspace root>
+2025-08-27 21:23:44.344 [info] (7018) Auto-excluding **/node_modules
+2025-08-27 21:23:44.344 [info] (7018) Auto-excluding **/__pycache__
+2025-08-27 21:23:44.345 [info] (7018) Auto-excluding **/.*
+2025-08-27 21:23:45.172 [info] (7018) Assuming Python version 3.11.2.final.0
+2025-08-27 21:23:46.924 [error] (7018) File or directory "/<default workspace root>" does not exist.
+2025-08-27 21:23:46.924 [info] (7018) No source files found.
+2025-08-27 21:23:50.609 [info] (7018) BG: Priority queue background worker(2) root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 21:23:50.613 [info] (7018) BG: Priority queue background worker(2) started
+2025-08-27 21:29:21.043 [info] (7018) Starting service instance "<default>" for workspace ""
+2025-08-27 21:29:21.228 [info] (7018) Setting environmentName for service "<default>": "3.11.2 (global)"
+2025-08-27 21:29:21.235 [info] (7018) Setting pythonPath for service "<default>": "/usr/bin/python3"
+2025-08-27 21:29:21.236 [info] (7018) No include entries specified; assuming /<default workspace root>
+2025-08-27 21:29:21.236 [info] (7018) Auto-excluding **/node_modules
+2025-08-27 21:29:21.236 [info] (7018) Auto-excluding **/__pycache__
+2025-08-27 21:29:21.236 [info] (7018) Auto-excluding **/.*
+2025-08-27 21:29:21.530 [info] (7018) Assuming Python version 3.11.2.final.0
+2025-08-27 21:29:22.246 [error] (7018) File or directory "/<default workspace root>" does not exist.
+2025-08-27 21:29:22.254 [info] (7018) No source files found.
+2025-08-27 21:29:25.620 [info] (7018) BG: Priority queue background worker(4) root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 21:29:25.621 [info] (7018) BG: Priority queue background worker(4) started

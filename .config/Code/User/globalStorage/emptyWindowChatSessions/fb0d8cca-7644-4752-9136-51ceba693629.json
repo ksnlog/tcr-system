@@ -1,0 +1,253 @@
+{
+  "version": 3,
+  "requesterUsername": "ksnlog",
+  "requesterAvatarIconUri": {
+    "$mid": 1,
+    "path": "/u/202502028",
+    "scheme": "https",
+    "authority": "avatars.githubusercontent.com",
+    "query": "v=4"
+  },
+  "responderUsername": "",
+  "responderAvatarIconUri": {
+    "id": "copilot"
+  },
+  "initialLocation": "panel",
+  "requests": [
+    {
+      "requestId": "request_71e01c3c-9549-4743-bbbe-4ac45946cb74",
+      "message": {
+        "text": "how to build a python script test",
+        "parts": [
+          {
+            "range": {
+              "start": 0,
+              "endExclusive": 33
+            },
+            "editorRange": {
+              "startLineNumber": 1,
+              "startColumn": 1,
+              "endLineNumber": 1,
+              "endColumn": 34
+            },
+            "text": "how to build a python script test",
+            "kind": "text"
+          }
+        ]
+      },
+      "variableData": {
+        "variables": [
+          {
+            "kind": "file",
+            "id": "vscode.implicit.file",
+            "name": "file:Untitled-1",
+            "value": {
+              "$mid": 1,
+              "fsPath": "Untitled-1",
+              "external": "untitled:Untitled-1",
+              "path": "Untitled-1",
+              "scheme": "untitled"
+            },
+            "modelDescription": "User's active file"
+          }
+        ]
+      },
+      "response": [
+        {
+          "value": "To set up Python script testing, it's common to use the `unittest` framework. Here’s how you can structure your workspace and add a basic \"hello world\" test:\n\n\n\nTo run your tests, use the following command in the terminal:\n\n```sh\npython -m unittest discover\n```",
+          "supportThemeIcons": false,
+          "supportHtml": false
+        }
+      ],
+      "responseId": "response_d76fb041-fc22-4a19-b430-7299037cb8dd",
+      "result": {
+        "timings": {
+          "firstProgress": 1808,
+          "totalElapsed": 3117
+        },
+        "metadata": {
+          "codeBlocks": [
+            {
+              "code": "python -m unittest discover\n",
+              "language": "sh",
+              "markdownBeforeBlock": "To set up Python script testing, it's common to use the `unittest` framework. Here’s how you can structure your workspace and add a basic \"hello world\" test:\n\n\n\nTo run your tests, use the following command in the terminal:\n\n"
+            }
+          ],
+          "toolCallRounds": [
+            {
+              "response": "To set up Python script testing, it's common to use the `unittest` framework. Here’s how you can structure your workspace and add a basic \"hello world\" test:\n\n```filetree\n[project-root]\n├── test_hello.py\n```\n\nTo run your tests, use the following command in the terminal:\n\n```sh\npython -m unittest discover\n```",
+              "toolCalls": [],
+              "toolInputRetry": 0,
+              "id": "ab38ead1-bf95-4815-b743-47e3043be2c2"
+            }
+          ],
+          "modelMessageId": "d91fc800-3d6f-4831-8895-40cbf3d81585",
+          "responseId": "70beab35-c81a-4d8f-ac7c-4f25d930a863",
+          "sessionId": "20d4145e-b29a-4c16-ad0d-7dbdd5195ef0",
+          "agentId": "github.copilot.workspace",
+          "command": "setupTests"
+        },
+        "details": "GPT-4.1 • 1x"
+      },
+      "followups": [],
+      "isCanceled": false,
+      "agent": {
+        "extensionId": {
+          "value": "GitHub.copilot-chat",
+          "_lower": "github.copilot-chat"
+        },
+        "publisherDisplayName": "GitHub",
+        "extensionPublisherId": "GitHub",
+        "extensionDisplayName": "GitHub Copilot Chat",
+        "id": "github.copilot.workspace",
+        "description": "Ask about your workspace",
+        "metadata": {
+          "sampleRequest": "How do I build this project?",
+          "themeIcon": {
+            "id": "code"
+          },
+          "hasFollowups": false,
+          "supportIssueReporting": false
+        },
+        "name": "workspace",
+        "fullName": "Workspace",
+        "locations": [
+          "panel"
+        ],
+        "modes": [
+          "agent",
+          "ask",
+          "edit"
+        ],
+        "slashCommands": [
+          {
+            "name": "explain",
+            "description": "Explain how the code in your active editor works"
+          },
+          {
+            "name": "tests",
+            "description": "Generate unit tests for the selected code",
+            "disambiguation": [
+              {
+                "category": "create_tests",
+                "description": "The user wants to generate unit tests.",
+                "examples": [
+                  "Generate tests for my selection using pytest."
+                ]
+              }
+            ]
+          },
+          {
+            "name": "fix",
+            "description": "Propose a fix for the problems in the selected code",
+            "sampleRequest": "There is a problem in this code. Rewrite the code to show it with the bug fixed."
+          },
+          {
+            "name": "new",
+            "description": "Scaffold code for a new file or project in a workspace",
+            "sampleRequest": "Create a RESTful API server using typescript",
+            "isSticky": true,
+            "disambiguation": [
+              {
+                "category": "create_new_workspace_or_extension",
+                "description": "The user wants to create a complete Visual Studio Code workspace from scratch, such as a new application or a Visual Studio Code extension. Use this category only if the question relates to generating or creating new workspaces in Visual Studio Code. Do not use this category for updating existing code or generating sample code snippets",
+                "examples": [
+                  "Scaffold a Node server.",
+                  "Create a sample project which uses the fileSystemProvider API.",
+                  "react application"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "newNotebook",
+            "description": "Create a new Jupyter Notebook",
+            "sampleRequest": "How do I create a notebook to load data from a csv file?",
+            "disambiguation": [
+              {
+                "category": "create_jupyter_notebook",
+                "description": "The user wants to create a new Jupyter notebook in Visual Studio Code.",
+                "examples": [
+                  "Create a notebook to analyze this CSV file."
+                ]
+              }
+            ]
+          },
+          {
+            "name": "setupTests",
+            "description": "Set up tests in your project (Experimental)",
+            "sampleRequest": "add playwright tests to my project",
+            "when": "config.github.copilot.chat.setupTests.enabled",
+            "disambiguation": [
+              {
+                "category": "set_up_tests",
+                "description": "The user wants to configure project test setup, framework, or test runner. The user does not want to fix their existing tests.",
+                "examples": [
+                  "Set up tests for this project."
+                ]
+              }
+            ]
+          }
+        ],
+        "disambiguation": [
+          {
+            "category": "workspace_project_questions",
+            "description": "The user wants to learn about or update the code or files in their current workspace. Questions in this category may be about understanding what the whole workspace does or locating the implementation of some code. This does not include generating or updating tests.",
+            "examples": [
+              "What does this project do?"
+            ]
+          },
+          {
+            "category": "find_code_in_workspace",
+            "description": "The user wants to locate the implementation of some functionality in their current workspace.",
+            "examples": [
+              "Where is the tree widget implemented?"
+            ]
+          },
+          {
+            "category": "generate_with_workspace_context",
+            "description": "The user wants to generate code based on multiple files in the workspace and did not specify which files to reference.",
+            "examples": [
+              "Create a README for this project."
+            ]
+          }
+        ]
+      },
+      "slashCommand": {
+        "name": "setupTests",
+        "description": "Set up tests in your project (Experimental)",
+        "sampleRequest": "add playwright tests to my project",
+        "when": "config.github.copilot.chat.setupTests.enabled",
+        "disambiguation": [
+          {
+            "category": "set_up_tests",
+            "description": "The user wants to configure project test setup, framework, or test runner. The user does not want to fix their existing tests.",
+            "examples": [
+              "Set up tests for this project."
+            ]
+          }
+        ]
+      },
+      "contentReferences": [
+        {
+          "kind": "reference",
+          "reference": {
+            "$mid": 1,
+            "fsPath": "Untitled-1",
+            "external": "untitled:Untitled-1",
+            "path": "Untitled-1",
+            "scheme": "untitled"
+          }
+        }
+      ],
+      "codeCitations": [],
+      "timestamp": 1756315357000,
+      "modelId": "copilot/gpt-4.1"
+    }
+  ],
+  "sessionId": "fb0d8cca-7644-4752-9136-51ceba693629",
+  "creationDate": 1756315333463,
+  "isImported": false,
+  "lastMessageDate": 1756315357002,
+  "customTitle": "Building a Python script test"
+}

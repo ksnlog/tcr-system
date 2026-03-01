@@ -1,0 +1,36 @@
+Visual Studio Code (1.103.2, undefined, desktop)
+Jupyter Extension Version: 2025.7.0.
+Python Extension Version: 2025.12.0.
+Python Environment Extension Version: 1.2.0.
+Pylance Extension Version: 2025.7.1.
+Platform: linux (x64).
+Home = /home/mailboxkishan
+Temp Storage folder ~/.config/Code/User/globalStorage/ms-toolsai.jupyter/version-2025.7.0
+No workspace folder opened.
+22:48:30.093 [info] Starting Kernel (Python Path: /usr/bin/python3, Unknown, 3.11.2) for '~/Python/Untitled-1.ipynb' (disableUI=true)
+22:48:32.044 [warn] Failed to get activated env vars for /usr/bin/python3 in 671ms
+22:48:32.068 [info] Process Execution: /usr/bin/python3 -c "import site;print("USER_BASE_VALUE");print(site.USER_BASE);print("USER_BASE_VALUE");"
+22:48:32.079 [warn] Failed to get activated env vars for /usr/bin/python3 in 705ms
+22:48:32.201 [info] Process Execution: /usr/bin/python3 -m pip list
+22:48:32.226 [info] Process Execution: /usr/bin/python3 -c "import ipykernel; print(ipykernel.__version__); print("5dc3a68c-e34e-4080-9c3e-2a532b2ccb4d"); print(ipykernel.__file__)"
+22:48:32.267 [info] Process Execution: /usr/bin/python3 -m ipykernel_launcher --f=/run/user/1000/jupyter/runtime/kernel-v35724b16a9808bde938aad255f64c2997a54ed1d3.json
+    > cwd: ~/Python
+22:48:32.516 [error] Disposing kernel process due to an error Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = /usr/bin/python3: No module named ipykernel_launcher
+    > vslsStack = ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805),ChildProcess.emit (node:events:530:35),ChildProcess._handle.onexit (node:internal/child_process:293:12)
+22:48:32.535 [error] Failed to connect raw kernel session: Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+22:48:32.536 [error] Failed to connect raw kernel session: Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+22:48:32.537 [warn] Failed to shutdown kernel, .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher TypeError: Cannot read properties of undefined (reading 'dispose')
+    at j_.shutdown (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:309:13632)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at B_.shutdown (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:309:22453)
+22:48:32.545 [warn] Error occurred while trying to start the kernel, options.disableUI=true Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = /usr/bin/python3: No module named ipykernel_launcher
+    > vslsStack = ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805),ChildProcess.emit (node:events:530:35),ChildProcess._handle.onexit (node:internal/child_process:293:12)
+22:53:25.196 [info] Dispose Kernel '~/Python/Untitled-1.ipynb' associated with '~/Python/Untitled-1.ipynb'

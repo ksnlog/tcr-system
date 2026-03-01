@@ -1,0 +1,13 @@
+2025-08-27 21:23:34.492 [info] Experiment 'pythonSurveyNotificationcf' is active
+2025-08-27 21:23:34.492 [info] Native locator: Refresh started
+2025-08-27 21:23:34.492 [info] Native locator: Refresh started
+2025-08-27 21:23:34.571 [info] Native locator: Refresh finished in 835 ms
+2025-08-27 21:23:35.961 [info] Python interpreter path: /usr/bin/python3
+2025-08-27 21:23:43.093 [info] Starting Pylance language server.
+2025-08-27 21:26:10.904 [info] > conda info --json
+2025-08-27 21:26:32.180 [info] Native locator: Refresh started
+2025-08-27 21:26:32.180 [info] Native locator: Refresh started
+2025-08-27 21:26:32.545 [info] Native locator: Refresh finished in 371 ms
+2025-08-27 21:26:36.505 [info] Active interpreter [Untitled-1.ipynb]:  /usr/bin/python3
+2025-08-27 21:29:11.696 [info] Native locator: Refresh started
+2025-08-27 21:29:11.965 [info] Native locator: Refresh finished in 263 ms

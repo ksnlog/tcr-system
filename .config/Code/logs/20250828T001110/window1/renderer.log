@@ -1,0 +1,83 @@
+2025-08-28 00:11:16.044 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vsliveshare.vsliveshare' wants API proposal 'notebookCellExecutionState' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-28 00:11:16.076 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.gather' wants API proposal 'notebookCellExecutionState' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-28 00:11:16.077 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.vscode-pylance' wants API proposal 'mcpConfigurationProvider' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-28 00:11:21.729 [info] Started local extension host with pid 10559.
+2025-08-28 00:11:38.226 [error] [Extension Host] (node:10559) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `exe --trace-warnings ...` to show where the warning was created)
+2025-08-28 00:11:45.758 [error] Assertion Failed: Argument is `undefined` or `null`.: Error: Assertion Failed: Argument is `undefined` or `null`.
+    at es (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:10:238)
+    at Gt (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:10:1188)
+    at H.run (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3564:3683)
+    at handler (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:33:32737)
+    at FEt.invokeFunction (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1312:674)
+    at kKe.n (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1251:3984)
+    at kKe.executeCommand (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1251:3599)
+    at tH.tc (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3381:28345)
+    at tH.Yb (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3381:11171)
+    at HTMLButtonElement.<anonymous> (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3381:10375)
+2025-08-28 00:11:47.546 [info] Extension host (LocalProcess pid: 10559) is unresponsive.
+2025-08-28 00:11:54.401 [error] [Extension Host] (node:10559) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+2025-08-28 00:11:54.788 [info] Extension host (LocalProcess pid: 10559) is responsive.
+2025-08-28 00:11:55.060 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2025-08-28 00:11:56.935 [info] [perf] Render performance baseline is 262ms
+2025-08-28 00:11:59.897 [info] Extension host (LocalProcess pid: 10559) is unresponsive.
+2025-08-28 00:12:02.487 [info] UNRESPONSIVE extension host: starting to profile NOW
+2025-08-28 00:12:07.527 [info] Extension host (LocalProcess pid: 10559) is responsive.
+2025-08-28 00:12:07.542 [info] UNRESPONSIVE extension host: received responsive event and cancelling profiling session
+2025-08-28 00:12:09.048 [warning] UNRESPONSIVE extension host: 'github.copilot' took 75.90837991666425% of 3823.121ms, saved PROFILE here: 'file:///tmp/exthost-4085fa.cpuprofile'
+2025-08-28 00:12:15.463 [error] CodeExpectedError: No default agent registered
+    at ixe.activateDefaultAgent (vscode-file://vscode-app/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:2090:64028)
+2025-08-28 00:12:16.965 [error] An unknown error occurred. Please consult the log for more details.
+2025-08-28 00:12:17.527 [error] [UriError]: Scheme contains illegal characters.: Error: [UriError]: Scheme contains illegal characters.
+    at R7 (file:///usr/share/code/resources/app/out/main.js:30:63994)
+    at new sd (file:///usr/share/code/resources/app/out/main.js:30:67374)
+    at new Ur (file:///usr/share/code/resources/app/out/main.js:30:68812)
+    at sd.revive (file:///usr/share/code/resources/app/out/main.js:30:68589)
+    at G4.call (file:///usr/share/code/resources/app/out/main.js:85:104940)
+    at If.s (file:///usr/share/code/resources/app/out/main.js:31:14859)
+    at If.q (file:///usr/share/code/resources/app/out/main.js:31:14382)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:31:13784)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D (file:///usr/share/code/resources/app/out/main.js:30:2443)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2660)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:28:4852)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2591)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:28:5040)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2591)
+    at z (file:///usr/share/code/resources/app/out/main.js:28:7334)
+    at IpcMainImpl.i (file:///usr/share/code/resources/app/out/main.js:33:21024)
+    at IpcMainImpl.emit (node:events:518:28)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:106370)
+    at Session.emit (node:events:518:28)
+2025-08-28 00:12:20.961 [info] Extension host (LocalProcess pid: 10559) is unresponsive.
+2025-08-28 00:12:24.124 [info] UNRESPONSIVE extension host: starting to profile NOW
+2025-08-28 00:12:26.760 [info] Extension host (LocalProcess pid: 10559) is responsive.
+2025-08-28 00:12:26.772 [info] UNRESPONSIVE extension host: received responsive event and cancelling profiling session
+2025-08-28 00:12:27.758 [warning] UNRESPONSIVE extension host: 'github.copilot' took 98.60498335512929% of 2614.874ms, saved PROFILE here: 'file:///tmp/exthost-10bdda.cpuprofile'
+2025-08-28 00:12:32.475 [error] An unknown error occurred. Please consult the log for more details.
+2025-08-28 00:16:03.343 [warning] [lifecycle] onWillShutdown is taking a long time, pending operations: join.chatSessionStore, join.chatEditingSession, join.workingCopyHistory
+2025-08-28 00:16:05.245 [error] [UriError]: Scheme contains illegal characters.: Error: [UriError]: Scheme contains illegal characters.
+    at R7 (file:///usr/share/code/resources/app/out/main.js:30:63994)
+    at new sd (file:///usr/share/code/resources/app/out/main.js:30:67374)
+    at new Ur (file:///usr/share/code/resources/app/out/main.js:30:68812)
+    at sd.revive (file:///usr/share/code/resources/app/out/main.js:30:68589)
+    at G4.call (file:///usr/share/code/resources/app/out/main.js:85:104940)
+    at If.s (file:///usr/share/code/resources/app/out/main.js:31:14859)
+    at If.q (file:///usr/share/code/resources/app/out/main.js:31:14382)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:31:13784)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D (file:///usr/share/code/resources/app/out/main.js:30:2443)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2660)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:28:4852)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2591)
+    at Yo.value (file:///usr/share/code/resources/app/out/main.js:28:5040)
+    at D.C (file:///usr/share/code/resources/app/out/main.js:30:2373)
+    at D.fire (file:///usr/share/code/resources/app/out/main.js:30:2591)
+    at z (file:///usr/share/code/resources/app/out/main.js:28:7334)
+    at IpcMainImpl.i (file:///usr/share/code/resources/app/out/main.js:33:21024)
+    at IpcMainImpl.emit (node:events:518:28)
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:106370)
+    at Session.emit (node:events:518:28)

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xbel version="1.0"
+      xmlns:bookmark="http://www.freedesktop.org/standards/desktop-bookmarks"
+      xmlns:mime="http://www.freedesktop.org/standards/shared-mime-info"
+>
+  <bookmark href="file:///home/mailboxkishan" added="2025-08-27T15:07:46.068569Z" modified="2025-08-27T15:07:46.068612Z" visited="2025-08-27T15:07:46.068587Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="inode/directory"/>
+        <bookmark:applications>
+          <bookmark:application name="code" exec="&apos;code %u&apos;" modified="2025-08-27T15:07:46.068591Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/mailboxkishan/Python/Test.py" added="2025-08-27T15:58:58.562258Z" modified="2025-08-27T15:58:58.562325Z" visited="2025-08-27T15:58:58.562271Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="text/x-python"/>
+        <bookmark:applications>
+          <bookmark:application name="code" exec="&apos;code %u&apos;" modified="2025-08-27T15:58:58.562275Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/mailboxkishan/Python/Untitled-1.ipynb" added="2025-08-27T15:59:10.977414Z" modified="2025-08-27T16:03:49.100883Z" visited="2025-08-27T15:59:10.977416Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-ipynb+json"/>
+        <bookmark:applications>
+          <bookmark:application name="code" exec="&apos;code %u&apos;" modified="2025-08-27T16:03:49.100850Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/mailboxkishan/Python/test.py" added="2025-08-27T18:45:20.401525Z" modified="2025-08-27T18:45:20.401554Z" visited="2025-08-27T18:45:20.401527Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="text/x-python"/>
+        <bookmark:applications>
+          <bookmark:application name="code" exec="&apos;code %u&apos;" modified="2025-08-27T18:45:20.401532Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+</xbel>

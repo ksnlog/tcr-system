@@ -1,0 +1,235 @@
+=== EXCEL DATA REPORT ===
+Generated: 2025-08-27 23:31:28
+Total rows: 4,360
+Total columns: 41
+
+--- Column Overview ---
+
+Column: Unnamed: 0
+  Data type: float64
+  Missing values: 4,360
+  Unique values: 0
+  Min: nan
+  Max: nan
+  Mean: nan
+  Standard deviation: nan
+
+Column: Unnamed: 1
+  Data type: float64
+  Missing values: 4,360
+  Unique values: 0
+  Min: nan
+  Max: nan
+  Mean: nan
+  Standard deviation: nan
+
+Column: Unnamed: 2
+  Data type: float64
+  Missing values: 4,360
+  Unique values: 0
+  Min: nan
+  Max: nan
+  Mean: nan
+  Standard deviation: nan
+
+Column: Unnamed: 3
+  Data type: float64
+  Missing values: 4,360
+  Unique values: 0
+  Min: nan
+  Max: nan
+  Mean: nan
+  Standard deviation: nan
+
+Column: Unnamed: 4
+  Data type: float64
+  Missing values: 4,360
+  Unique values: 0
+  Min: nan
+  Max: nan
+  Mean: nan
+  Standard deviation: nan
+
+Column: Brand
+  Data type: object
+  Missing values: 0
+  Unique values: 3
+
+Column: BRANCH
+  Data type: object
+  Missing values: 0
+  Unique values: 5
+
+Column: PO NO.
+  Data type: object
+  Missing values: 2
+  Unique values: 3,361
+
+Column: PO DATE
+  Data type: object
+  Missing values: 3
+  Unique values: 230
+
+Column: CALL ID
+  Data type: object
+  Missing values: 0
+  Unique values: 3,191
+
+Column: WARRANTY STATUS
+  Data type: object
+  Missing values: 94
+  Unique values: 10
+
+Column: CALL STATUS
+  Data type: object
+  Missing values: 31
+  Unique values: 3
+
+Column: ASP NAME
+  Data type: object
+  Missing values: 0
+  Unique values: 181
+
+Column: ASP CODE
+  Data type: object
+  Missing values: 349
+  Unique values: 145
+
+Column: UNIT MODEL
+  Data type: object
+  Missing values: 30
+  Unique values: 185
+
+Column: UNIT MODEL DESC
+  Data type: object
+  Missing values: 31
+  Unique values: 111
+
+Column: UNIT SERIAL NUMBER
+  Data type: object
+  Missing values: 34
+  Unique values: 2,761
+
+Column: DOP
+  Data type: object
+  Missing values: 41
+  Unique values: 1,301
+
+Column: PART NO.
+  Data type: object
+  Missing values: 737
+  Unique values: 831
+
+Column: PART DESCRIPTION
+  Data type: object
+  Missing values: 6
+  Unique values: 831
+
+Column: PART PRICE
+  Data type: object
+  Missing values: 398
+  Unique values: 789
+
+Column: APPROVED_QTY
+  Data type: object
+  Missing values: 29
+  Unique values: 9
+
+Column: FIRST APPROVER
+  Data type: object
+  Missing values: 236
+  Unique values: 18
+
+Column: APPROVED DATE
+  Data type: object
+  Missing values: 270
+  Unique values: 1,698
+
+Column: SECOND APPROVER
+  Data type: object
+  Missing values: 998
+  Unique values: 18
+
+Column: FINAL APPROVED DATE
+  Data type: object
+  Missing values: 1,001
+  Unique values: 796
+
+Column: FIRST_APPROVER_REMARKS
+  Data type: object
+  Missing values: 365
+  Unique values: 311
+
+Column: SECOND_APPROVER_REMARKS
+  Data type: object
+  Missing values: 1,020
+  Unique values: 31
+
+Column: STATUS
+  Data type: object
+  Missing values: 57
+  Unique values: 7
+
+Column: PRODUCT
+  Data type: object
+  Missing values: 97
+  Unique values: 17
+
+Column: CUSTOMER NAME
+  Data type: object
+  Missing values: 96
+  Unique values: 2,302
+
+Column: CALL TYPE
+  Data type: object
+  Missing values: 87
+  Unique values: 13
+
+Column: Billing Stock
+  Data type: object
+  Missing values: 198
+  Unique values: 57
+
+Column: Invoice No
+  Data type: object
+  Missing values: 4,199
+  Unique values: 32
+
+Column: Date
+  Data type: object
+  Missing values: 661
+  Unique values: 212
+
+Column: Courier
+  Data type: object
+  Missing values: 2,138
+  Unique values: 19
+
+Column: Docket No
+  Data type: object
+  Missing values: 2,839
+  Unique values: 819
+
+Column: Date.1
+  Data type: object
+  Missing values: 2,480
+  Unique values: 202
+
+Column: Defective
+  Data type: object
+  Missing values: 3,825
+  Unique values: 103
+
+Column: Return invoice no 
+  Data type: object
+  Missing values: 4,358
+  Unique values: 2
+
+Column: Remarks
+  Data type: object
+  Missing values: 4,271
+  Unique values: 35
+
+--- Summary Statistics ---
+Total missing values: 52,781
+Total duplicate rows (before cleaning): 2

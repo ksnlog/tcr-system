@@ -1,0 +1,30 @@
+2025-08-27 22:48:32.593 [info] (Client) Pylance client (2025.7.1) started with python extension (2025.12.0)
+2025-08-27 22:48:40.315 [info] (8675) Server root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 22:48:40.316 [info] (8675) Pylance language server 2025.7.1 (pyright version 1.1.403, commit 8b02aa84) starting
+2025-08-27 22:48:40.926 [info] (8675) Starting Mcp server id:5022 ...
+2025-08-27 22:48:40.959 [info] (8675) Starting service instance "<default>" for workspace ""
+2025-08-27 22:48:41.589 [info] (8675) Setting environmentName for service "<default>": "3.11.2 (global)"
+2025-08-27 22:48:41.596 [info] (8675) Setting pythonPath for service "<default>": "/usr/bin/python3"
+2025-08-27 22:48:41.598 [info] (8675) No include entries specified; assuming /<default workspace root>
+2025-08-27 22:48:41.601 [info] (8675) Auto-excluding **/node_modules
+2025-08-27 22:48:41.604 [info] (8675) Auto-excluding **/__pycache__
+2025-08-27 22:48:41.609 [info] (8675) Auto-excluding **/.*
+2025-08-27 22:48:41.795 [info] (8675) Assuming Python version 3.11.2.final.0
+2025-08-27 22:48:42.986 [error] (8675) File or directory "/<default workspace root>" does not exist.
+2025-08-27 22:48:42.993 [info] (8675) No source files found.
+2025-08-27 22:48:45.061 [info] (8675) Starting service instance "<default>" for workspace ""
+2025-08-27 22:48:45.433 [info] (8675) Setting environmentName for service "<default>": "3.11.2 (global)"
+2025-08-27 22:48:45.433 [info] (8675) Setting pythonPath for service "<default>": "/usr/bin/python3"
+2025-08-27 22:48:45.436 [info] (8675) No include entries specified; assuming /<default workspace root>
+2025-08-27 22:48:45.449 [info] (8675) Auto-excluding **/node_modules
+2025-08-27 22:48:45.457 [info] (8675) Auto-excluding **/__pycache__
+2025-08-27 22:48:45.458 [info] (8675) Auto-excluding **/.*
+2025-08-27 22:48:45.652 [info] (8675) Assuming Python version 3.11.2.final.0
+2025-08-27 22:48:46.030 [error] (8675) File or directory "/<default workspace root>" does not exist.
+2025-08-27 22:48:46.030 [info] (8675) No source files found.
+2025-08-27 22:48:47.900 [info] (8675) BG: Priority queue background worker(2) root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 22:48:47.901 [info] (8675) BG: Priority queue background worker(2) started
+2025-08-27 22:48:50.560 [info] (8675) BG: Priority queue background worker(4) root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 22:48:50.568 [info] (8675) BG: Priority queue background worker(4) started
+2025-08-27 22:51:50.997 [info] (8675) Settings have not changed. Skipping update.
+2025-08-27 22:51:50.999 [info] (8675) Settings have not changed. Skipping update.

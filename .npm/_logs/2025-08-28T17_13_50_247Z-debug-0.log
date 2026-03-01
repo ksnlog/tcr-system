@@ -1,0 +1,28 @@
+0 verbose cli /usr/bin/node /usr/bin/npm
+1 info using npm@10.8.2
+2 info using node@v20.19.4
+3 silly config load:file:/usr/lib/node_modules/npm/npmrc
+4 silly config load:file:/home/mailboxkishan/excel_project/.npmrc
+5 silly config load:file:/home/mailboxkishan/.npmrc
+6 silly config load:file:/usr/etc/npmrc
+7 verbose title npm init
+8 verbose argv "init" "--yes"
+9 verbose logfile logs-max:10 dir:/home/mailboxkishan/.npm/_logs/2025-08-28T17_13_50_247Z-
+10 verbose logfile /home/mailboxkishan/.npm/_logs/2025-08-28T17_13_50_247Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly package data {
+12 silly package data   name: 'excel_project',
+12 silly package data   version: '1.0.0',
+12 silly package data   main: 'index.js',
+12 silly package data   scripts: { test: 'echo "Error: no test specified" && exit 1' },
+12 silly package data   keywords: [],
+12 silly package data   author: '',
+12 silly package data   license: 'ISC',
+12 silly package data   description: ''
+12 silly package data }
+13 verbose cwd /home/mailboxkishan/excel_project
+14 verbose os Linux 6.6.76-08096-g300882a0a131
+15 verbose node v20.19.4
+16 verbose npm  v10.8.2
+17 verbose exit 0
+18 info ok

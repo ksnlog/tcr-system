@@ -1,0 +1,112 @@
+0 verbose cli /usr/bin/node /usr/bin/npm
+1 info using npm@10.8.2
+2 info using node@v20.19.4
+3 silly config load:file:/usr/lib/node_modules/npm/npmrc
+4 silly config load:file:/home/mailboxkishan/.npmrc
+5 silly config load:file:/usr/etc/npmrc
+6 verbose title npm install xlsx
+7 verbose argv "install" "--global" "xlsx"
+8 verbose logfile logs-max:10 dir:/home/mailboxkishan/.npm/_logs/2025-08-28T17_12_00_315Z-
+9 verbose logfile /home/mailboxkishan/.npm/_logs/2025-08-28T17_12_00_315Z-debug-0.log
+10 silly packumentCache heap:1490550784 maxSize:372637696 maxEntrySize:186318848
+11 silly logfile done cleaning log files
+12 silly idealTree buildDeps
+13 silly fetch manifest xlsx@*
+14 silly packumentCache full:https://registry.npmjs.org/xlsx cache-miss
+15 http fetch GET 200 https://registry.npmjs.org/xlsx 341ms (cache miss)
+16 silly packumentCache full:https://registry.npmjs.org/xlsx set size:undefined disposed:false
+17 silly placeDep ROOT xlsx@0.18.5 OK for:  want: *
+18 silly fetch manifest cfb@~1.2.1
+19 silly packumentCache full:https://registry.npmjs.org/cfb cache-miss
+20 http fetch GET 200 https://registry.npmjs.org/npm 489ms
+21 http fetch GET 200 https://registry.npmjs.org/cfb 1009ms (cache miss)
+22 silly packumentCache full:https://registry.npmjs.org/cfb set size:undefined disposed:false
+23 silly fetch manifest ssf@~0.11.2
+24 silly packumentCache full:https://registry.npmjs.org/ssf cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/ssf 116ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/ssf set size:undefined disposed:false
+27 silly fetch manifest wmf@~1.0.1
+28 silly packumentCache full:https://registry.npmjs.org/wmf cache-miss
+29 http fetch GET 200 https://registry.npmjs.org/wmf 84ms (cache miss)
+30 silly packumentCache full:https://registry.npmjs.org/wmf set size:undefined disposed:false
+31 silly fetch manifest word@~0.3.0
+32 silly packumentCache full:https://registry.npmjs.org/word cache-miss
+33 http fetch GET 200 https://registry.npmjs.org/word 132ms (cache miss)
+34 silly packumentCache full:https://registry.npmjs.org/word set size:undefined disposed:false
+35 silly fetch manifest crc-32@~1.2.1
+36 silly packumentCache full:https://registry.npmjs.org/crc-32 cache-miss
+37 http fetch GET 200 https://registry.npmjs.org/crc-32 90ms (cache miss)
+38 silly packumentCache full:https://registry.npmjs.org/crc-32 set size:undefined disposed:false
+39 silly fetch manifest adler-32@~1.3.0
+40 silly packumentCache full:https://registry.npmjs.org/adler-32 cache-miss
+41 http fetch GET 200 https://registry.npmjs.org/adler-32 118ms (cache miss)
+42 silly packumentCache full:https://registry.npmjs.org/adler-32 set size:undefined disposed:false
+43 silly fetch manifest codepage@~1.15.0
+44 silly packumentCache full:https://registry.npmjs.org/codepage cache-miss
+45 http fetch GET 200 https://registry.npmjs.org/codepage 85ms (cache miss)
+46 silly packumentCache full:https://registry.npmjs.org/codepage set size:undefined disposed:false
+47 silly placeDep node_modules/xlsx adler-32@1.3.1 OK for: xlsx@0.18.5 want: ~1.3.0
+48 silly placeDep node_modules/xlsx cfb@1.2.2 OK for: xlsx@0.18.5 want: ~1.2.1
+49 silly placeDep node_modules/xlsx codepage@1.15.0 OK for: xlsx@0.18.5 want: ~1.15.0
+50 silly placeDep node_modules/xlsx crc-32@1.2.2 OK for: xlsx@0.18.5 want: ~1.2.1
+51 silly placeDep node_modules/xlsx ssf@0.11.2 OK for: xlsx@0.18.5 want: ~0.11.2
+52 silly placeDep node_modules/xlsx wmf@1.0.2 OK for: xlsx@0.18.5 want: ~1.0.1
+53 silly placeDep node_modules/xlsx word@0.3.0 OK for: xlsx@0.18.5 want: ~0.3.0
+54 silly fetch manifest crc-32@~1.2.0
+55 silly packumentCache full:https://registry.npmjs.org/crc-32 cache-miss
+56 http fetch GET 200 https://registry.npmjs.org/crc-32 17ms (cache hit)
+57 silly packumentCache full:https://registry.npmjs.org/crc-32 set size:32170 disposed:false
+58 silly fetch manifest frac@~1.1.2
+59 silly packumentCache full:https://registry.npmjs.org/frac cache-miss
+60 http fetch GET 200 https://registry.npmjs.org/frac 112ms (cache miss)
+61 silly packumentCache full:https://registry.npmjs.org/frac set size:undefined disposed:false
+62 silly placeDep node_modules/xlsx frac@1.1.2 OK for: ssf@0.11.2 want: ~1.1.2
+63 silly reify moves {}
+64 verbose stack Error: EACCES: permission denied, mkdir '/usr/lib/node_modules/xlsx'
+64 verbose stack     at async mkdir (node:internal/fs/promises:858:10)
+64 verbose stack     at async /usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:624:20
+64 verbose stack     at async Promise.allSettled (index 0)
+64 verbose stack     at async [reifyPackages] (/usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:325:11)
+64 verbose stack     at async Arborist.reify (/usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:142:5)
+64 verbose stack     at async Install.exec (/usr/lib/node_modules/npm/lib/commands/install.js:150:5)
+64 verbose stack     at async Npm.exec (/usr/lib/node_modules/npm/lib/npm.js:207:9)
+64 verbose stack     at async module.exports (/usr/lib/node_modules/npm/lib/cli/entry.js:74:5)
+65 error code EACCES
+66 error syscall mkdir
+67 error path /usr/lib/node_modules/xlsx
+68 error errno -13
+69 error Error: EACCES: permission denied, mkdir '/usr/lib/node_modules/xlsx'
+69 error     at async mkdir (node:internal/fs/promises:858:10)
+69 error     at async /usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:624:20
+69 error     at async Promise.allSettled (index 0)
+69 error     at async [reifyPackages] (/usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:325:11)
+69 error     at async Arborist.reify (/usr/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:142:5)
+69 error     at async Install.exec (/usr/lib/node_modules/npm/lib/commands/install.js:150:5)
+69 error     at async Npm.exec (/usr/lib/node_modules/npm/lib/npm.js:207:9)
+69 error     at async module.exports (/usr/lib/node_modules/npm/lib/cli/entry.js:74:5) {
+69 error   errno: -13,
+69 error   code: 'EACCES',
+69 error   syscall: 'mkdir',
+69 error   path: '/usr/lib/node_modules/xlsx'
+69 error }
+70 error
+70 error The operation was rejected by your operating system.
+70 error It is likely you do not have the permissions to access this file as the current user
+70 error
+70 error If you believe this might be a permissions issue, please double-check the
+70 error permissions of the file and its containing directories, or try running
+70 error the command again as root/Administrator.
+71 silly unfinished npm timer reify 1756401121137
+72 silly unfinished npm timer reify:createSparse 1756401123508
+73 verbose cwd /home/mailboxkishan
+74 verbose os Linux 6.6.76-08096-g300882a0a131
+75 verbose node v20.19.4
+76 verbose npm  v10.8.2
+77 notice
+77 notice New [31mmajor[39m version of npm available! [31m10.8.2[39m -> [34m11.5.2[39m
+77 notice Changelog: [34mhttps://github.com/npm/cli/releases/tag/v11.5.2[39m
+77 notice To update run: [4mnpm install -g npm@11.5.2[24m
+77 notice  { force: true, [Symbol(proc-log.meta)]: true }
+78 verbose exit -13
+79 verbose code -13
+80 error A complete log of this run can be found in: /home/mailboxkishan/.npm/_logs/2025-08-28T17_12_00_315Z-debug-0.log

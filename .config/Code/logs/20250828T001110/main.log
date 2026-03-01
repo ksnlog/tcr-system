@@ -1,0 +1,5 @@
+2025-08-28 00:11:13.015 [info] update#setState idle
+2025-08-28 00:11:43.207 [info] update#setState checking for updates
+2025-08-28 00:11:43.331 [info] update#setState idle
+2025-08-28 00:16:02.943 [info] Extension host with pid 10559 exited with code: 0, signal: unknown.
+2025-08-28 00:16:03.969 [error] Extension host with pid 10559 still exists, forcefully killing it...

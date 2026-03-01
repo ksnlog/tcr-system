@@ -1,0 +1,33 @@
+2025-08-27 20:26:04.712 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vsliveshare.vsliveshare' wants API proposal 'notebookCellExecutionState' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-27 20:26:04.741 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.gather' wants API proposal 'notebookCellExecutionState' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-27 20:26:04.742 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.vscode-pylance' wants API proposal 'mcpConfigurationProvider' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-08-27 20:26:06.019 [info] Started local extension host with pid 1291.
+2025-08-27 20:26:06.185 [info] Started initializing default profile extensions in extensions installation folder. file:///home/mailboxkishan/.vscode/extensions
+2025-08-27 20:26:06.653 [info] ChatSessionStore: Migrating 0 chat sessions from storage service to file system
+2025-08-27 20:26:08.522 [info] Completed initializing default profile extensions in extensions installation folder. file:///home/mailboxkishan/.vscode/extensions
+2025-08-27 20:26:13.255 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2025-08-27 20:26:15.383 [warning] Creation of workbench contribution 'workbench.contrib.configurationMigration' took 126ms.
+2025-08-27 20:26:16.587 [info] [perf] Render performance baseline is 195ms
+2025-08-27 20:27:35.067 [info] Extension host (LocalProcess pid: 1291) is unresponsive.
+2025-08-27 20:27:36.909 [info] UNRESPONSIVE extension host: starting to profile NOW
+2025-08-27 20:27:38.680 [error] [Extension Host] (node:1291) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `exe --trace-deprecation ...` to show where the warning was created)
+2025-08-27 20:27:38.777 [info] Extension host (LocalProcess pid: 1291) is responsive.
+2025-08-27 20:27:38.779 [info] UNRESPONSIVE extension host: received responsive event and cancelling profiling session
+2025-08-27 20:27:39.217 [warning] UNRESPONSIVE extension host: 'github.codespaces' took 97.15580982597307% of 1829.987ms, saved PROFILE here: 'file:///tmp/exthost-fcd61f.cpuprofile'
+2025-08-27 20:31:19.528 [error] Error while getting the latest version for the extension ms-python.python from https://marketplace.visualstudio.com/_apis/public/gallery/vscode/{publisher}/{name}/latest. Trying the fallback https://www.vscode-unpkg.net/_gallery/{publisher}/{name}/latest Canceled
+2025-08-27 20:31:19.532 [error] Error while getting the latest version for the extension eamodio.gitlens from https://marketplace.visualstudio.com/_apis/public/gallery/vscode/{publisher}/{name}/latest. Trying the fallback https://www.vscode-unpkg.net/_gallery/{publisher}/{name}/latest Canceled
+2025-08-27 20:31:19.534 [error] Error while getting the latest version for the extension vscodevim.vim from https://marketplace.visualstudio.com/_apis/public/gallery/vscode/{publisher}/{name}/latest. Trying the fallback https://www.vscode-unpkg.net/_gallery/{publisher}/{name}/latest Canceled
+2025-08-27 20:31:19.566 [error] Error while getting the latest version for the extension ms-python.python. Canceled
+2025-08-27 20:31:19.575 [error] Error while getting the latest version for the extension eamodio.gitlens. Canceled
+2025-08-27 20:31:19.576 [error] Error while getting the latest version for the extension vscodevim.vim. Canceled
+2025-08-27 20:37:51.299 [warning] [lifecycle] onBeforeShutdown is taking a long time, pending operations: veto.backups
+2025-08-27 20:37:53.940 [info] [lifecycle]: Shutdown was prevented by final veto (id: veto.backups)
+2025-08-27 20:56:29.181 [warning] Settings pattern "mcp" doesn't match any settings
+2025-08-27 20:56:29.183 [warning] SettingsEditor2: Settings not included in settingsLayout.ts: github.copilot.chat.agent.terminal.allowList, github.copilot.chat.agent.terminal.denyList
+2025-08-27 20:56:31.439 [warning] Settings pattern "GitHub.copilot.manageExtension" doesn't match any settings
+2025-08-27 20:56:59.102 [info] Settings Sync: Updated current session 33c2c787e2ac83ab
+2025-08-27 20:56:59.150 [info] Settings Sync: Account status changed from unavailable to available
+2025-08-27 20:57:00.438 [error] Failed to fetch token entitlements Server returned 403
+2025-08-27 20:57:01.388 [warning] Settings pattern "mcp" doesn't match any settings
+2025-08-27 20:57:02.635 [warning] Settings pattern "mcp" doesn't match any settings

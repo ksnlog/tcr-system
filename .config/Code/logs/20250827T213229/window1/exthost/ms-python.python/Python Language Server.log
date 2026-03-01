@@ -1,0 +1,18 @@
+2025-08-27 21:33:42.018 [info] (Client) Pylance client (2025.7.1) started with python extension (2025.12.0)
+2025-08-27 21:33:50.954 [info] (7837) Server root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 21:33:50.955 [info] (7837) Pylance language server 2025.7.1 (pyright version 1.1.403, commit 8b02aa84) starting
+2025-08-27 21:33:52.555 [info] (7837) Starting Mcp server id:3093 ...
+2025-08-27 21:33:52.594 [info] (7837) Starting service instance "<default>" for workspace ""
+2025-08-27 21:33:52.915 [info] (7837) Setting environmentName for service "<default>": "3.11.2 (global)"
+2025-08-27 21:33:52.917 [info] (7837) Setting pythonPath for service "<default>": "/usr/bin/python3"
+2025-08-27 21:33:52.919 [info] (7837) No include entries specified; assuming /<default workspace root>
+2025-08-27 21:33:52.927 [info] (7837) Auto-excluding **/node_modules
+2025-08-27 21:33:52.933 [info] (7837) Auto-excluding **/__pycache__
+2025-08-27 21:33:52.935 [info] (7837) Auto-excluding **/.*
+2025-08-27 21:33:53.225 [info] (7837) Assuming Python version 3.11.2.final.0
+2025-08-27 21:33:54.028 [error] (7837) File or directory "/<default workspace root>" does not exist.
+2025-08-27 21:33:54.037 [info] (7837) No source files found.
+2025-08-27 21:34:01.300 [info] (7837) BG: Priority queue background worker(2) root directory: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist
+2025-08-27 21:34:01.384 [info] (7837) BG: Priority queue background worker(2) started
+2025-08-27 21:34:07.576 [info] (7837) BG: [BG(1)] Long operation: parsing: file:///home/mailboxkishan/.vscode/extensions/ms-python.vscode-pylance-2025.7.1/dist/typeshed-fallback/stdlib/builtins.pyi (2878ms)
+2025-08-27 21:34:10.347 [info] (7837) BG: [BG(1)] Long operation: SemanticTokens range 0:0 - 2:0 at file:///home/mailboxkishan/Python/Untitled-1.ipynb.py#W0sZmlsZQ%3D%3D (6947ms)

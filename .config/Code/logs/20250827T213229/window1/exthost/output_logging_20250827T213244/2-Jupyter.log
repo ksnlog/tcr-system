@@ -1,0 +1,83 @@
+Visual Studio Code (1.103.2, undefined, desktop)
+Jupyter Extension Version: 2025.7.0.
+Python Extension Version: 2025.12.0.
+Python Environment Extension Version: 1.2.0.
+Pylance Extension Version: 2025.7.1.
+Platform: linux (x64).
+Home = /home/mailboxkishan
+Temp Storage folder ~/.config/Code/User/globalStorage/ms-toolsai.jupyter/version-2025.7.0
+No workspace folder opened.
+21:34:00.545 [info] Starting Kernel (Python Path: /usr/bin/python3, Unknown, 3.11.2) for '~/Python/Untitled-1.ipynb' (disableUI=true)
+21:34:01.901 [warn] Failed to get activated env vars for /usr/bin/python3 in 1393ms
+21:34:02.089 [info] Process Execution: /usr/bin/python3 -c "import site;print("USER_BASE_VALUE");print(site.USER_BASE);print("USER_BASE_VALUE");"
+21:34:02.160 [warn] Failed to get activated env vars for /usr/bin/python3 in 1399ms
+21:34:02.442 [info] Process Execution: /usr/bin/python3 -m pip list
+21:34:02.524 [info] Process Execution: /usr/bin/python3 -c "import ipykernel; print(ipykernel.__version__); print("5dc3a68c-e34e-4080-9c3e-2a532b2ccb4d"); print(ipykernel.__file__)"
+21:34:02.663 [info] Process Execution: /usr/bin/python3 -m ipykernel_launcher --f=/run/user/1000/jupyter/runtime/kernel-v3a8d3d2c31480c018b95fda20457a86101bc40b2f.json
+    > cwd: ~/Python
+21:34:03.093 [error] Disposing kernel process due to an error Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = /usr/bin/python3: No module named ipykernel_launcher
+    > vslsStack = ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805),ChildProcess.emit (node:events:530:35),ChildProcess._handle.onexit (node:internal/child_process:293:12)
+21:34:03.132 [error] Failed to connect raw kernel session: Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+21:34:03.133 [error] Failed to connect raw kernel session: Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+21:34:03.143 [warn] Failed to shutdown kernel, .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher TypeError: Cannot read properties of undefined (reading 'dispose')
+    at j_.shutdown (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:309:13632)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at B_.shutdown (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:309:22453)
+21:34:03.152 [warn] Error occurred while trying to start the kernel, options.disableUI=false Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = /usr/bin/python3: No module named ipykernel_launcher
+    > vslsStack = ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805),ChildProcess.emit (node:events:530:35),ChildProcess._handle.onexit (node:internal/child_process:293:12)
+21:34:03.169 [warn] Kernel Error, context = start Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = /usr/bin/python3: No module named ipykernel_launcher
+    > vslsStack = ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805),ChildProcess.emit (node:events:530:35),ChildProcess._handle.onexit (node:internal/child_process:293:12)
+21:34:03.266 [info] Process Execution: /usr/bin/python3 -c "import ipykernel;print('6af208d0-cb9c-427f-b937-ff563e17efdf')"
+21:34:03.410 [info] Check & install missing Kernel dependencies for /usr/bin/python3, ui.disabled=false for resource '~/Python/Untitled-1.ipynb'
+21:34:03.473 [info] Process Execution: /usr/bin/python3 -c "import ipykernel;print('6af208d0-cb9c-427f-b937-ff563e17efdf')"
+21:34:03.615 [info] Process Execution: /usr/bin/python3 -c "import pip;print('6af208d0-cb9c-427f-b937-ff563e17efdf')"
+21:34:09.928 [info] Process Execution: /usr/bin/python3 -c "import pip;print('6af208d0-cb9c-427f-b937-ff563e17efdf')"
+21:34:10.529 [info] Process Execution: /usr/bin/python3 -m pip install -U --user ipykernel
+21:34:12.532 [error] Failed to install ipykernel error: externally-managed-environment
+
+× This environment is externally managed
+╰─> To install Python packages system-wide, try apt install
+    python3-xyz, where xyz is the package you are trying to
+    install.
+    
+    If you wish to install a non-Debian-packaged Python package,
+    create a virtual environment using python3 -m venv path/to/venv.
+    Then use path/to/venv/bin/python and path/to/venv/bin/pip. Make
+    sure you have python3-full installed.
+    
+    If you wish to install a non-Debian packaged Python application,
+    it may be easiest to use pipx install xyz, which will manage a
+    virtual environment for you. Make sure you have pipx installed.
+    
+    See /usr/share/doc/python3.11/README.venv for more information.
+
+note: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.
+hint: See PEP 668 for the detailed specification.
+
+21:34:12.537 [info] Dispose Kernel '~/Python/Untitled-1.ipynb' associated with '~/Python/Untitled-1.ipynb'
+21:34:12.551 [error] Error in notebook cell execution Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = /usr/bin/python3: No module named ipykernel_launcher
+    > vslsStack = ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805),ChildProcess.emit (node:events:530:35),ChildProcess._handle.onexit (node:internal/child_process:293:12)
+21:34:12.568 [error] Error in execution (get message for cell) Error: The kernel died. Error: /usr/bin/python3: No module named ipykernel_launcher... View Jupyter [log](command:jupyter.viewOutput) for further details.
+    > Kernel Id = .jvsc74a57bd031f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6./usr/bin/python3./usr/bin/python3.-m#ipykernel_launcher
+    > Interpreter Id = /usr/bin/python3
+    > at ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805)
+    > stdErr = /usr/bin/python3: No module named ipykernel_launcher
+    > vslsStack = ChildProcess.<anonymous> (~/.vscode/extensions/ms-toolsai.jupyter-2025.7.0-linux-x64/dist/extension.node.js:304:45805),ChildProcess.emit (node:events:530:35),ChildProcess._handle.onexit (node:internal/child_process:293:12)
+21:34:12.616 [info] Process Execution: /usr/bin/python3 -c "import ipykernel;print('6af208d0-cb9c-427f-b937-ff563e17efdf')"
+21:41:26.706 [info] Dispose Kernel '~/Python/Untitled-1.ipynb' associated with '~/Python/Untitled-1.ipynb'
