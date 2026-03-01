@@ -168,9 +168,9 @@ export default function ConfirmPage() {
         <div className="hdr">
           <div className="ht">
             <div className="logo">O<br/>GEN</div>
-            <div><div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div><div className="hsub">Authorized O General – Fujitsu Installation Partner</div></div>
+            <div><div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div><div className="hsub">Authorized O General - Fujitsu Installation Partner</div></div>
           </div>
-          <div className="hbadge">🔒 TCR – Secure Customer Confirmation</div>
+          <div className="hbadge">🔒 TCR - Secure Customer Confirmation</div>
         </div>
         <div className="card">
           {screen==='loading'&&<div className="loading"><div className="spin"/><p style={{fontSize:12,color:'#6B7280'}}>Loading charge summary…</p></div>}

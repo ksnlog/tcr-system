@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 const LOGO =  + logo + ;
 
 const additionalItems = () => [
-  {no:"2.1", desc:"Copper pipe With Insulation – Supply & Labour, Upto 2 Ton",       rate:850,  unit:"Ft", group:"low",  qty:0},
-  {no:"2.2", desc:"Copper pipe With Insulation – Supply & Labour, 2.5/3/4 Ton",      rate:950,  unit:"Ft", group:"high", qty:0},
+  {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:850,  unit:"Ft", group:"low",  qty:0},
+  {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:950,  unit:"Ft", group:"high", qty:0},
   {no:"3",   desc:"Supply and laying of Electrical 3/4 Core Cable",                  rate:120,  unit:"Ft", group:"all",  qty:0},
   {no:"4",   desc:"ODU Stand Supply and Fixing / Only Fixing",                        rate:750,  unit:"No.", group:"all",  qty:0},
   {no:"5",   desc:"Drain Pipe supply and fixing",                                     rate:100,  unit:"Ft", group:"all",  qty:0},
@@ -199,7 +199,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>TCR – GENERAL HVAC</title>
+        <title>TCR - GENERAL HVAC</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
       </Head>
@@ -325,11 +325,11 @@ export default function Home() {
             </div>
             <div>
               <div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div>
-              <div className="hsub">Authorized O General – Fujitsu Installation Partner</div>
+              <div className="hsub">Authorized O General - Fujitsu Installation Partner</div>
               <div className="hssd" id="ssdDisp">{f.ssdName ? `📍 ${f.ssdName}` : ""}</div>
             </div>
           </div>
-          <div className="hsubtitle">AC Installation – TCR Charge Confirmation</div>
+          <div className="hsubtitle">AC Installation - TCR Charge Confirmation</div>
           <div className="hbadge">
             <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             TCR
@@ -438,7 +438,7 @@ export default function Home() {
                     </tbody>
                   </table>
 
-                  <div style={{fontSize:"9.5px",fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6,paddingLeft:2}}>Customer Scope – Actuals</div>
+                  <div style={{fontSize:"9.5px",fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6,paddingLeft:2}}>Customer Scope - Actuals</div>
                   <table className="ct">
                     <thead><tr><th>#</th><th>Description</th><th colSpan={2} style={{textAlign:"center"}}>Actual Amount (₹)</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
                     <tbody>
