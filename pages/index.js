@@ -319,7 +319,7 @@ export default function Home() {
         <div className="hdr">
           <div className="ht">
             <div className="logo">
-              <img src={LOGO} alt="O General"/>
+              <img src="/logo.png" alt="O General"/>
             </div>
             <div>
               <div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div>
