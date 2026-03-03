@@ -1,8 +1,6 @@
 import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 
-const LOGO =  + logo + ;
-
 const additionalItems = () => [
   {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:850,  unit:"Ft", group:"low",  qty:0},
   {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:950,  unit:"Ft", group:"high", qty:0},
