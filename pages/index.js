@@ -18,14 +18,7 @@ const actCatalog = [
   {desc:"Rubber Pad",                         unit:"Unit", rate:200},
   {desc:"Plug Top",                           unit:"Unit", rate:150},
 ];
-const actCatalog = [
-  {desc:"Wall Chiseling / Chipping",          unit:"Ft",   rate:0},
-  {desc:"Beam / Concrete Wall Core Drilling", unit:"No.",  rate:0},
-  {desc:"Miscellaneous (Please specify)",     unit:"No.",  rate:0},
-  {desc:"Wrapping Tape",                      unit:"Ft",   rate:24},
-  {desc:"Rubber Pad",                         unit:"Unit", rate:200},
-  {desc:"Plug Top",                           unit:"Unit", rate:150},
-];
+
 const actualItems = () => [];
 const x = [
 ];
