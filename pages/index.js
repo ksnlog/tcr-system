@@ -2,18 +2,32 @@ import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 
 const additionalItems = () => [
-  {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:850,  unit:"Ft", group:"low",  qty:0},
-  {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:950,  unit:"Ft", group:"high", qty:0},
-  {no:"3",   desc:"Supply and laying of Electrical 3/4 Core Cable",                  rate:120,  unit:"Ft", group:"all",  qty:0},
+  {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:259,  unit:"Ft", group:"low",  qty:0},
+  {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:290,  unit:"Ft", group:"high", qty:0},
+  {no:"3",   desc:"Supply and laying of Electrical 3/4 Core Cable",                  rate:37,   unit:"Ft", group:"all",  qty:0},
   {no:"4",   desc:"ODU Stand Supply and Fixing / Only Fixing",                        rate:750,  unit:"No.", group:"all",  qty:0},
-  {no:"5",   desc:"Drain Pipe supply and fixing",                                     rate:100,  unit:"Ft", group:"all",  qty:0},
+  {no:"5",   desc:"Drain Pipe supply and fixing",                                     rate:30,   unit:"Ft", group:"all",  qty:0},
   {no:"6",   desc:"Dismantling of OLD / Existing Split AC Unit",                      rate:750,  unit:"No.", group:"all",  qty:0},
 ];
 
-const actualItems = () => [
-  {no:"7", desc:"Wall Chiseling / Chipping",          actual:0},
-  {no:"8", desc:"Beam / Concrete Wall Core Drilling", actual:0},
-  {no:"9", desc:"Miscellaneous (Please specify)",     actual:0},
+const actCatalog = [
+  {desc:"Wall Chiseling / Chipping",          unit:"Ft",   rate:0},
+  {desc:"Beam / Concrete Wall Core Drilling", unit:"No.",  rate:0},
+  {desc:"Miscellaneous (Please specify)",     unit:"No.",  rate:0},
+  {desc:"Wrapping Tape",                      unit:"Ft",   rate:24},
+  {desc:"Rubber Pad",                         unit:"Unit", rate:200},
+  {desc:"Plug Top",                           unit:"Unit", rate:150},
+];
+const actCatalog = [
+  {desc:"Wall Chiseling / Chipping",          unit:"Ft",   rate:0},
+  {desc:"Beam / Concrete Wall Core Drilling", unit:"No.",  rate:0},
+  {desc:"Miscellaneous (Please specify)",     unit:"No.",  rate:0},
+  {desc:"Wrapping Tape",                      unit:"Ft",   rate:24},
+  {desc:"Rubber Pad",                         unit:"Unit", rate:200},
+  {desc:"Plug Top",                           unit:"Unit", rate:150},
+];
+const actualItems = () => [];
+const x = [
 ];
 
 const tonOptions = [
@@ -36,6 +50,7 @@ export default function Home() {
   const [units, setUnits] = useState([{model:"",serial:""}]);
   const [addItems, setAddItems] = useState(additionalItems());
   const [actItems, setActItems] = useState(actualItems());
+  const [actSelected, setActSelected] = useState([]);
 
   // ── App state ──
   const [screen, setScreen] = useState("form");   // form | pending | done
@@ -69,7 +84,7 @@ export default function Home() {
       const rate = (it.no === "4" && (ton==="2.0+"||ton==="2.0")) ? 1200 : it.rate;
       sub += rate * (parseFloat(it.qty)||0);
     });
-    actItems.forEach(it => sub += parseFloat(it.actual)||0);
+    actItems.forEach(it => { const qty=parseFloat(it.actual)||0; sub += it.rate>0 ? qty*it.rate : qty; });
     const gst = f.gstOn ? Math.round(sub * 0.18) : 0;
     return { sub, gst, total: sub + gst };
   }
