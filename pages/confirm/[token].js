@@ -134,7 +134,6 @@ export default function ConfirmPage() {
         .hdr{background:linear-gradient(135deg,#E8001D,#9B0013);border-radius:14px 14px 0 0;padding:13px 15px;color:white;position:relative;overflow:hidden}
         .hdr::after{content:'';position:absolute;right:-20px;top:-20px;width:90px;height:90px;background:rgba(255,255,255,.06);border-radius:50%}
         .ht{display:flex;align-items:center;gap:9px;position:relative;z-index:1}
-        .logo{width:36px;height:36px;background:#25D366;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:7.5px;font-weight:800;color:white;text-align:center;line-height:1.2}
         .hco{font-size:11.5px;font-weight:700} .hsub{font-size:9px;color:rgba(255,255,255,.6);margin-top:1px}
         .hbadge{margin-top:7px;display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;position:relative;z-index:1}
         .loading{padding:48px 20px;text-align:center} .spin{width:40px;height:40px;border:3px solid #E5E7EB;border-top-color:#E8001D;border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px} @keyframes sp{to{transform:rotate(360deg)}}
