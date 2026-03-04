@@ -43,7 +43,8 @@ export default function Home() {
     custName:"", mobile:"", callNo:"", serviceDate:"", techName:"", ssdName:"",
     address:"", tonnage:"", unitCount:1, gstOn:false, gstNumber:""
   });
-  const [units, setUnits] = useState([{model:"",serial:""}]);
+  const [units, setUnits] = useState([{model:"",serial:"",pipeSize:""}]);
+  const [techList, setTechList] = useState([]);
   const [addItems, setAddItems] = useState(additionalItems());
   const [actItems, setActItems] = useState(actualItems());
   const [actSelected, setActSelected] = useState([]);
@@ -62,11 +63,13 @@ export default function Home() {
   const field = (k, v) => setF(p => ({...p, [k]: v}));
 
   // Unit count change
+  useEffect(() => { fetch('/api/inventory/technicians').then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setTechList(d); }); }, []);
+
   useEffect(() => {
     const n = parseInt(f.unitCount) || 1;
     setUnits(prev => {
       const next = [...prev];
-      while (next.length < n) next.push({model:"",serial:""});
+      while (next.length < n) next.push({model:"",serial:"",pipeSize:""});
       return next.slice(0, n);
     });
   }, [f.unitCount]);
@@ -142,6 +145,27 @@ export default function Home() {
       setToken(json.token);
       setWaLink(json.waLink);
       setScreen("pending");
+      try {
+        const deductItems = [];
+        const pipeMap = {"1/4 & 1/2":"copper_pair_14_12","3/8 & 5/8":"copper_pair_38_58","1/2 & 5/8":"copper_pair_12_58"};
+        const pipeQty = addItems.find(it=>it.no==="2.1"||it.no==="2.2");
+        units.forEach(u => {
+          if (!u.pipeSize) return;
+          const matId = pipeMap[u.pipeSize];
+          if (matId && pipeQty && pipeQty.qty>0) {
+            const ex = deductItems.find(d=>d.materialId===matId);
+            if (ex) ex.qty += parseFloat(pipeQty.qty)||0;
+            else deductItems.push({materialId:matId, qty:parseFloat(pipeQty.qty)||0});
+          }
+        });
+        const matMap = {"3":"elec_cable","4":"odu_stand","5":"drain_pipe","6":"dismantling"};
+        addItems.forEach(it => { if (matMap[it.no]&&it.qty>0) deductItems.push({materialId:matMap[it.no],qty:parseFloat(it.qty)||0}); });
+        const actMap = {"Wrapping Tape":"wrapping_tape","Rubber Pad":"rubber_pad","Plug Top":"plug_top"};
+        actItems.forEach(it => { const mid=actMap[it.desc]; if(mid&&it.actual>0) deductItems.push({materialId:mid,qty:parseFloat(it.actual)||0}); });
+        if (deductItems.length>0 && f.techName) {
+          await fetch('/api/inventory/deduct',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({techId:f.techName,items:deductItems,jobNo:f.callNo})});
+        }
+      } catch(e) { console.log('Deduct error:',e); }
       setRemaining(1800);
       startPolling(json.token);
     } catch(e) {
@@ -195,7 +219,7 @@ export default function Home() {
     clearInterval(timerRef.current);
     setScreen("form");
     setF({custName:"",mobile:"",callNo:"",serviceDate:"",techName:"",ssdName:"",address:"",tonnage:"",unitCount:1,gstOn:false,gstNumber:""});
-    setUnits([{model:"",serial:""}]);
+    setUnits([{model:"",serial:"",pipeSize:""}]);
     setAddItems(additionalItems());
     setActItems(actualItems());
     setErr("");
@@ -378,7 +402,12 @@ export default function Home() {
                     <div className="field"><label>Service Date</label><input type="date" value={f.serviceDate} onChange={e=>field("serviceDate",e.target.value)}/></div>
                   </div>
                   <div className="fg">
-                    <div className="field"><label>Technician Name *</label><input value={f.techName} onChange={e=>field("techName",e.target.value)} placeholder="Technician name"/></div>
+                    <div className="field"><label>Technician *</label>
+                      <select value={f.techName} onChange={e=>field("techName",e.target.value)} style={{width:"100%",padding:"8px 10px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:12,outline:"none",background:"white"}}>
+                        <option value="">Select Technician...</option>
+                        {techList.map(t=><option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
+                      </select>
+                    </div>
                     <div className="field"><label>SSD / SF Name</label><input value={f.ssdName} onChange={e=>field("ssdName",e.target.value)} placeholder="SSD or SF name"/></div>
                   </div>
                   <div className="fg one">
@@ -413,6 +442,19 @@ export default function Home() {
                       <div className="fg">
                         <div className="field"><label>Model No.</label><input value={u.model} onChange={e=>updateUnit(i,"model",e.target.value)} placeholder="Model number"/></div>
                         <div className="field"><label>Serial No.</label><input value={u.serial} onChange={e=>updateUnit(i,"serial",e.target.value)} placeholder="Serial number"/></div>
+                        <div className="field" style={{gridColumn:"1/-1"}}><label>Pipe Size (Pair) *</label>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:3}}>
+                            {["1/4 & 1/2","3/8 & 5/8","1/2 & 5/8"].map(ps=>(
+                              <div key={ps} onClick={()=>updateUnit(i,"pipeSize",ps)}
+                                style={{padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:500,cursor:"pointer",userSelect:"none",
+                                  background:u.pipeSize===ps?"#DBEAFE":"white",
+                                  border:u.pipeSize===ps?"1.5px solid #3B82F6":"1.5px solid #E5E7EB",
+                                  color:u.pipeSize===ps?"#1D4ED8":"#6B7280"}}>
+                                {u.pipeSize===ps?"✓ ":""}{ps}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
