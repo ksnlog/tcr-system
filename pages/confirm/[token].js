@@ -54,7 +54,7 @@ export default function ConfirmPage() {
     doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text('GENERAL HVAC Solutions India Pvt Ltd', M+34, 13);
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
-    doc.text('Authorized O General - Fujitsu Installation Partner', M+34, 19);
+    doc.text('Authorized Service Partner - TCR cum Customer Confirmation', M+34, 19);
     doc.setFontSize(9); doc.setFont('helvetica','bold');
     doc.text('AC INSTALLATION - TCR CHARGE CONFIRMATION', M+34, 26);
     doc.setFontSize(7); doc.setFont('helvetica','normal');
@@ -167,10 +167,9 @@ export default function ConfirmPage() {
       <div className="wrap">
         <div className="hdr">
           <div className="ht">
-            <div className="logo">O<br/>GEN</div>
-            <div><div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div><div className="hsub">Authorized O General - Fujitsu Installation Partner</div></div>
+            <div><div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div><div className="hsub">Authorized Service Partner - TCR cum Customer Confirmation</div></div>
           </div>
-          <div className="hbadge">🔒 TCR - Secure Customer Confirmation</div>
+          
         </div>
         <div className="card">
           {screen==='loading'&&<div className="loading"><div className="spin"/><p style={{fontSize:12,color:'#6B7280'}}>Loading charge summary…</p></div>}
