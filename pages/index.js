@@ -318,19 +318,12 @@ export default function Home() {
         {/* ── HEADER ── */}
         <div className="hdr">
           <div className="ht">
-            <div className="logo">
-              <img src="/logo.png" alt="O General"/>
-            </div>
+            
             <div>
               <div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div>
-              <div className="hsub">Authorized O General - Fujitsu Installation Partner</div>
+              <div className="hsub">Authorized Service Partner - TCR cum Customer Confirmation</div>
               <div className="hssd" id="ssdDisp">{f.ssdName ? `📍 ${f.ssdName}` : ""}</div>
             </div>
-          </div>
-          <div className="hsubtitle">AC Installation - TCR Charge Confirmation</div>
-          <div className="hbadge">
-            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            TCR
           </div>
         </div>
 
