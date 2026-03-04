@@ -36,6 +36,9 @@ const fmtINR = n => Number(n||0).toLocaleString('en-IN');
 
 export default function Home() {
   // ── Form fields ──
+  const [authed, setAuthed] = useState(false);
+  const [pwdInput, setPwdInput] = useState('');
+  const [pwdErr, setPwdErr] = useState('');
   const [f, setF] = useState({
     custName:"", mobile:"", callNo:"", serviceDate:"", techName:"", ssdName:"",
     address:"", tonnage:"", unitCount:1, gstOn:false, gstNumber:""
@@ -339,8 +342,26 @@ export default function Home() {
           <div className="wa-inner">
             <div className="wa-msg">
 
+              {/* PASSWORD SCREEN */}
+              {!authed && (
+                <div style={{padding:"40px 20px",textAlign:"center"}}>
+                  <div style={{fontSize:32,marginBottom:12}}>🔐</div>
+                  <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>Technician Login</div>
+                  <div style={{fontSize:12,color:"#6B7280",marginBottom:20}}>Enter password to access TCR form</div>
+                  <input type="password" value={pwdInput} onChange={e=>setPwdInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}}
+                    placeholder="Enter password"
+                    style={{width:"100%",padding:"10px 14px",border:"1.5px solid #E5E7EB",borderRadius:10,fontSize:14,marginBottom:8,outline:"none",textAlign:"center",letterSpacing:2}}
+                  />
+                  {pwdErr && <div style={{color:"#DC2626",fontSize:12,marginBottom:8}}>{pwdErr}</div>}
+                  <button onClick={()=>{if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}
+                    style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#E8001D,#9B0013)",color:"white",border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer"}}>
+                    Login
+                  </button>
+                </div>
+              )}
               {/* ════════════════ FORM SCREEN ════════════════ */}
-              {screen === "form" && <>
+              {authed && screen === "form" && <>
 
                 {/* ① Customer Details */}
                 <div className="sec">
@@ -519,7 +540,7 @@ export default function Home() {
               </>}
 
               {/* ════════════════ PENDING SCREEN ════════════════ */}
-              {screen === "pending" && (
+              {authed && screen === "pending" && (
                 <div className="pending-wrap">
                   <div className="pulse-ring">📲</div>
                   <div className="ptitle">Awaiting Customer Confirmation</div>
@@ -546,7 +567,7 @@ export default function Home() {
               )}
 
               {/* ════════════════ DONE SCREEN ════════════════ */}
-              {screen === "done" && (
+              {authed && screen === "done" && (
                 <div className="done-wrap">
                   <div className="done-icon">✅</div>
                   <div style={{fontSize:17,fontWeight:700,color:"var(--dark)",marginBottom:6}}>Customer Approved!</div>
