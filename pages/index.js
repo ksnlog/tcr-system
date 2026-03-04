@@ -438,21 +438,41 @@ export default function Home() {
                   </table>
 
                   <div style={{fontSize:"9.5px",fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6,paddingLeft:2}}>Customer Scope - Actuals</div>
-                  <table className="ct">
-                    <thead><tr><th>#</th><th>Description</th><th colSpan={2} style={{textAlign:"center"}}>Actual Amount (₹)</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
-                    <tbody>
-                      {actItems.map((it,i) => (
-                        <tr key={it.no}>
-                          <td className="no">{it.no}</td>
-                          <td className="dc">{it.desc}</td>
-                          <td colSpan={2} style={{textAlign:"center"}}>
-                            <input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:80}}/>
-                          </td>
-                          <td className="ra">{it.actual>0?`₹${fmtINR(it.actual)}`:"—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8,maxHeight:90,overflowY:"auto",padding:6,background:"#FFFBEB",borderRadius:8,border:"1px solid #FDE68A"}}>
+                    {actCatalog.map((cat,i) => {
+                      const sel = actSelected.includes(i);
+                      return (
+                        <div key={i} onClick={()=>{
+                          if(sel){
+                            setActSelected(p=>p.filter(x=>x!==i));
+                            setActItems(p=>p.filter(it=>it.desc!==cat.desc));
+                          } else {
+                            setActSelected(p=>[...p,i]);
+                            setActItems(p=>[...p,{no:String(10+i),desc:cat.desc,unit:cat.unit,rate:cat.rate,actual:0}]);
+                          }
+                        }} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:500,cursor:"pointer",userSelect:"none",background:sel?"#FEF3C7":"white",border:sel?"1.5px solid #F59E0B":"1.5px solid #E5E7EB",color:sel?"#92400E":"#6B7280"}}>
+                          {sel?"✓ ":""}{cat.desc}{cat.rate>0?" (Rs."+cat.rate+"/"+cat.unit+")":""}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {actItems.length>0 && (
+                    <table className="ct">
+                      <thead><tr><th>#</th><th>Description</th><th style={{textAlign:"center"}}>Qty</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
+                      <tbody>
+                        {actItems.map((it,i)=>(
+                          <tr key={i}>
+                            <td className="no">{it.no}</td>
+                            <td className="dc">{it.desc}{it.rate>0?<small>Rs.{it.rate}/{it.unit}</small>:null}</td>
+                            <td style={{textAlign:"center"}}>
+                              <input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:60}}/>
+                            </td>
+                            <td className="ra">{it.actual>0?(it.rate>0?"Rs."+String((it.actual*it.rate).toLocaleString("en-IN")):"Rs."+String(Number(it.actual).toLocaleString("en-IN"))):"—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
 
                 {/* GST Toggle */}
