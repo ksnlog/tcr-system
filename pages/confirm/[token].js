@@ -49,7 +49,6 @@ export default function ConfirmPage() {
     const doc = new jsPDF({ unit:'mm', format:'a4', compress:true });
     const W=210, M=14; let y=0;
     doc.setFillColor(232,0,29); doc.rect(0,0,W,30,'F');
-    doc.setFillColor(37,211,102); doc.rect(M,5,30,20,'F');
     doc.setTextColor(255,255,255);
     doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text('GENERAL HVAC Solutions India Pvt Ltd', M+34, 13);
