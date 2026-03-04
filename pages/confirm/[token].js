@@ -77,7 +77,7 @@ export default function ConfirmPage() {
     sH('Installation Charges',[40,40,40]);
     const rows=[['1','Standard Installation (Free)','--','--','Rs.0']];
     (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/Ft',i.qty+' Ft','Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
-    (d.actualItems||[]).filter(i=>i.actual>0).forEach(i=>rows.push([i.no,i.desc,'Actual','--','Rs.'+Number(i.actual).toLocaleString('en-IN')]));
+    (d.actualItems||[]).filter(i=>i.actual>0).forEach(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; rows.push([i.no,i.desc,i.unit||'Actual',i.actual,'Rs.'+Number(amt).toLocaleString('en-IN')]); });
     doc.autoTable({ startY:y, margin:{left:M,right:M}, head:[['#','Description','Rate','Qty','Amount']], body:rows, styles:{fontSize:8,cellPadding:2.5,textColor:[50,50,50]}, headStyles:{fillColor:[30,30,30],textColor:[255,255,255],fontStyle:'bold',fontSize:8}, alternateRowStyles:{fillColor:[248,248,248]}, columnStyles:{0:{cellWidth:10},1:{cellWidth:95},2:{cellWidth:28},3:{cellWidth:20},4:{cellWidth:25,halign:'right'}}, theme:'grid' });
     y=doc.lastAutoTable.finalY+6;
     const bx=W-M-70, bw=70, fR=n=>'Rs.'+Number(n).toLocaleString('en-IN');
@@ -191,7 +191,7 @@ export default function ConfirmPage() {
                 <tbody>
                   <tr><td>1</td><td className="dc">Standard Installation</td><td>—</td><td><span className="fb">₹0</span></td></tr>
                   {(data.additionalItems||[]).filter(i=>i.qty>0).map(i=><tr key={i.no}><td>{i.no}</td><td className="dc">{i.desc}</td><td style={{textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10}}>{i.qty} Ft</td><td>{fmtINR(i.rate*i.qty)}</td></tr>)}
-                  {(data.actualItems||[]).filter(i=>i.actual>0).map(i=><tr key={i.no}><td>{i.no}</td><td className="dc">{i.desc}</td><td style={{textAlign:'center'}}>Actual</td><td>{fmtINR(i.actual)}</td></tr>)}
+                  {(data.actualItems||[]).filter(i=>i.actual>0).map(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; return <tr key={i.no}><td>{i.no}</td><td className="dc">{i.desc}</td><td style={{textAlign:'center'}}>{i.actual} {i.unit||''}</td><td>{fmtINR(amt)}</td></tr>; })}
                 </tbody>
               </table>
             </div>
