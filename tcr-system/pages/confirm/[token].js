@@ -30,10 +30,22 @@ export default function ConfirmPage() {
 
   async function handleConfirm() {
     setConfirming(true);
+    let location = null;
+    try {
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+      );
+      location = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: Math.round(pos.coords.accuracy),
+        mapsLink: `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`
+      };
+    } catch(e) { location = null; }
     try {
       const res = await fetch('/api/confirm', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, location }),
       });
       const json = await res.json();
       if (!res.ok) { alert(json.message || 'Error. Please try again.'); setConfirming(false); return; }

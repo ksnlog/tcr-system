@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { token } = req.body;
+  const { token, location } = req.body;
 
   if (!token) {
     return res.status(400).json({ error: 'Token required' });
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     // ── Mark as confirmed ──
-    const confirmed = await confirmToken(token);
+    const confirmed = await confirmToken(token, location);
 
     return res.status(200).json({
       success: true,

@@ -32,10 +32,10 @@ export async function getToken(token) {
   return data;
 }
 
-export async function confirmToken(token) {
+export async function confirmToken(token, location) {
   const data = store.get(token);
   if (!data) return null;
-  const confirmed = { ...data, confirmed: true, confirmedAt: new Date().toISOString() };
+  const confirmed = { ...data, confirmed: true, confirmedAt: new Date().toISOString(), location: location || null };
   store.set(token, confirmed);
   return confirmed;
 }
