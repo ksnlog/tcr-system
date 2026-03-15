@@ -1,26 +1,21 @@
 import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 
+const LOGO =  + logo + ;
+
 const additionalItems = () => [
-  {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:259,  unit:"Ft", group:"low",  qty:0},
-  {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:290,  unit:"Ft", group:"high", qty:0},
-  {no:"3",   desc:"Supply and laying of Electrical 3/4 Core Cable",                  rate:37,   unit:"Ft", group:"all",  qty:0},
+  {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:850,  unit:"Ft", group:"low",  qty:0},
+  {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:950,  unit:"Ft", group:"high", qty:0},
+  {no:"3",   desc:"Supply and laying of Electrical 3/4 Core Cable",                  rate:120,  unit:"Ft", group:"all",  qty:0},
   {no:"4",   desc:"ODU Stand Supply and Fixing / Only Fixing",                        rate:750,  unit:"No.", group:"all",  qty:0},
-  {no:"5",   desc:"Drain Pipe supply and fixing",                                     rate:30,   unit:"Ft", group:"all",  qty:0},
+  {no:"5",   desc:"Drain Pipe supply and fixing",                                     rate:100,  unit:"Ft", group:"all",  qty:0},
   {no:"6",   desc:"Dismantling of OLD / Existing Split AC Unit",                      rate:750,  unit:"No.", group:"all",  qty:0},
 ];
 
-const actCatalog = [
-  {desc:"Wall Chiseling / Chipping",          unit:"Ft",   rate:0},
-  {desc:"Beam / Concrete Wall Core Drilling", unit:"No.",  rate:0},
-  {desc:"Miscellaneous (Please specify)",     unit:"No.",  rate:0},
-  {desc:"Wrapping Tape",                      unit:"Ft",   rate:24},
-  {desc:"Rubber Pad",                         unit:"Unit", rate:200},
-  {desc:"Plug Top",                           unit:"Unit", rate:150},
-];
-
-const actualItems = () => [];
-const x = [
+const actualItems = () => [
+  {no:"7", desc:"Wall Chiseling / Chipping",          actual:0},
+  {no:"8", desc:"Beam / Concrete Wall Core Drilling", actual:0},
+  {no:"9", desc:"Miscellaneous (Please specify)",     actual:0},
 ];
 
 const tonOptions = [
@@ -36,18 +31,13 @@ const fmtINR = n => Number(n||0).toLocaleString('en-IN');
 
 export default function Home() {
   // ── Form fields ──
-  const [authed, setAuthed] = useState(false);
-  const [pwdInput, setPwdInput] = useState('');
-  const [pwdErr, setPwdErr] = useState('');
   const [f, setF] = useState({
     custName:"", mobile:"", callNo:"", serviceDate:"", techName:"", ssdName:"",
     address:"", tonnage:"", unitCount:1, gstOn:false, gstNumber:""
   });
-  const [units, setUnits] = useState([{model:"",serial:"",pipeSize:""}]);
-  const [techList, setTechList] = useState([]);
+  const [units, setUnits] = useState([{model:"",serial:""}]);
   const [addItems, setAddItems] = useState(additionalItems());
   const [actItems, setActItems] = useState(actualItems());
-  const [actSelected, setActSelected] = useState([]);
 
   // ── App state ──
   const [screen, setScreen] = useState("form");   // form | pending | done
@@ -63,13 +53,11 @@ export default function Home() {
   const field = (k, v) => setF(p => ({...p, [k]: v}));
 
   // Unit count change
-  useEffect(() => { fetch('/api/inventory/technicians').then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setTechList(d); }); }, []);
-
   useEffect(() => {
     const n = parseInt(f.unitCount) || 1;
     setUnits(prev => {
       const next = [...prev];
-      while (next.length < n) next.push({model:"",serial:"",pipeSize:""});
+      while (next.length < n) next.push({model:"",serial:""});
       return next.slice(0, n);
     });
   }, [f.unitCount]);
@@ -83,7 +71,7 @@ export default function Home() {
       const rate = (it.no === "4" && (ton==="2.0+"||ton==="2.0")) ? 1200 : it.rate;
       sub += rate * (parseFloat(it.qty)||0);
     });
-    actItems.forEach(it => { const qty=parseFloat(it.actual)||0; sub += it.rate>0 ? qty*it.rate : qty; });
+    actItems.forEach(it => sub += parseFloat(it.actual)||0);
     const gst = f.gstOn ? Math.round(sub * 0.18) : 0;
     return { sub, gst, total: sub + gst };
   }
@@ -145,27 +133,6 @@ export default function Home() {
       setToken(json.token);
       setWaLink(json.waLink);
       setScreen("pending");
-      try {
-        const deductItems = [];
-        const pipeMap = {"1/4 & 1/2":"copper_pair_14_12","3/8 & 5/8":"copper_pair_38_58","1/2 & 5/8":"copper_pair_12_58"};
-        const pipeQty = addItems.find(it=>it.no==="2.1"||it.no==="2.2");
-        units.forEach(u => {
-          if (!u.pipeSize) return;
-          const matId = pipeMap[u.pipeSize];
-          if (matId && pipeQty && pipeQty.qty>0) {
-            const ex = deductItems.find(d=>d.materialId===matId);
-            if (ex) ex.qty += parseFloat(pipeQty.qty)||0;
-            else deductItems.push({materialId:matId, qty:parseFloat(pipeQty.qty)||0});
-          }
-        });
-        const matMap = {"3":"elec_cable","4":"odu_stand","5":"drain_pipe","6":"dismantling"};
-        addItems.forEach(it => { if (matMap[it.no]&&it.qty>0) deductItems.push({materialId:matMap[it.no],qty:parseFloat(it.qty)||0}); });
-        const actMap = {"Wrapping Tape":"wrapping_tape","Rubber Pad":"rubber_pad","Plug Top":"plug_top"};
-        actItems.forEach(it => { const mid=actMap[it.desc]; if(mid&&it.actual>0) deductItems.push({materialId:mid,qty:parseFloat(it.actual)||0}); });
-        if (deductItems.length>0 && f.techName) {
-          await fetch('/api/inventory/deduct',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({techId:f.techName,items:deductItems,jobNo:f.callNo})});
-        }
-      } catch(e) { console.log('Deduct error:',e); }
       setRemaining(1800);
       startPolling(json.token);
     } catch(e) {
@@ -219,7 +186,7 @@ export default function Home() {
     clearInterval(timerRef.current);
     setScreen("form");
     setF({custName:"",mobile:"",callNo:"",serviceDate:"",techName:"",ssdName:"",address:"",tonnage:"",unitCount:1,gstOn:false,gstNumber:""});
-    setUnits([{model:"",serial:"",pipeSize:""}]);
+    setUnits([{model:"",serial:""}]);
     setAddItems(additionalItems());
     setActItems(actualItems());
     setErr("");
@@ -353,12 +320,19 @@ export default function Home() {
         {/* ── HEADER ── */}
         <div className="hdr">
           <div className="ht">
-            
+            <div className="logo">
+              <img src={LOGO} alt="O General"/>
+            </div>
             <div>
               <div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div>
-              <div className="hsub">Authorized Service Partner - TCR cum Customer Confirmation</div>
+              <div className="hsub">Authorized O General - Fujitsu Installation Partner</div>
               <div className="hssd" id="ssdDisp">{f.ssdName ? `📍 ${f.ssdName}` : ""}</div>
             </div>
+          </div>
+          <div className="hsubtitle">AC Installation - TCR Charge Confirmation</div>
+          <div className="hbadge">
+            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            TCR
           </div>
         </div>
 
@@ -366,26 +340,8 @@ export default function Home() {
           <div className="wa-inner">
             <div className="wa-msg">
 
-              {/* PASSWORD SCREEN */}
-              {!authed && (
-                <div style={{padding:"40px 20px",textAlign:"center"}}>
-                  <div style={{fontSize:32,marginBottom:12}}>🔐</div>
-                  <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>Technician Login</div>
-                  <div style={{fontSize:12,color:"#6B7280",marginBottom:20}}>Enter password to access TCR form</div>
-                  <input type="password" value={pwdInput} onChange={e=>setPwdInput(e.target.value)}
-                    onKeyDown={e=>{if(e.key==='Enter'){if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}}
-                    placeholder="Enter password"
-                    style={{width:"100%",padding:"10px 14px",border:"1.5px solid #E5E7EB",borderRadius:10,fontSize:14,marginBottom:8,outline:"none",textAlign:"center",letterSpacing:2}}
-                  />
-                  {pwdErr && <div style={{color:"#DC2626",fontSize:12,marginBottom:8}}>{pwdErr}</div>}
-                  <button onClick={()=>{if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}
-                    style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#E8001D,#9B0013)",color:"white",border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer"}}>
-                    Login
-                  </button>
-                </div>
-              )}
               {/* ════════════════ FORM SCREEN ════════════════ */}
-              {authed && screen === "form" && <>
+              {screen === "form" && <>
 
                 {/* ① Customer Details */}
                 <div className="sec">
@@ -402,12 +358,7 @@ export default function Home() {
                     <div className="field"><label>Service Date</label><input type="date" value={f.serviceDate} onChange={e=>field("serviceDate",e.target.value)}/></div>
                   </div>
                   <div className="fg">
-                    <div className="field"><label>Technician *</label>
-                      <select value={f.techName} onChange={e=>field("techName",e.target.value)} style={{width:"100%",padding:"8px 10px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:12,outline:"none",background:"white"}}>
-                        <option value="">Select Technician...</option>
-                        {techList.map(t=><option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
-                      </select>
-                    </div>
+                    <div className="field"><label>Technician Name *</label><input value={f.techName} onChange={e=>field("techName",e.target.value)} placeholder="Technician name"/></div>
                     <div className="field"><label>SSD / SF Name</label><input value={f.ssdName} onChange={e=>field("ssdName",e.target.value)} placeholder="SSD or SF name"/></div>
                   </div>
                   <div className="fg one">
@@ -442,19 +393,6 @@ export default function Home() {
                       <div className="fg">
                         <div className="field"><label>Model No.</label><input value={u.model} onChange={e=>updateUnit(i,"model",e.target.value)} placeholder="Model number"/></div>
                         <div className="field"><label>Serial No.</label><input value={u.serial} onChange={e=>updateUnit(i,"serial",e.target.value)} placeholder="Serial number"/></div>
-                        <div className="field" style={{gridColumn:"1/-1"}}><label>Pipe Size (Pair) *</label>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:3}}>
-                            {["1/4 & 1/2","3/8 & 5/8","1/2 & 5/8"].map(ps=>(
-                              <div key={ps} onClick={()=>updateUnit(i,"pipeSize",ps)}
-                                style={{padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:500,cursor:"pointer",userSelect:"none",
-                                  background:u.pipeSize===ps?"#DBEAFE":"white",
-                                  border:u.pipeSize===ps?"1.5px solid #3B82F6":"1.5px solid #E5E7EB",
-                                  color:u.pipeSize===ps?"#1D4ED8":"#6B7280"}}>
-                                {u.pipeSize===ps?"✓ ":""}{ps}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
                       </div>
                     </div>
                   ))}
@@ -501,41 +439,21 @@ export default function Home() {
                   </table>
 
                   <div style={{fontSize:"9.5px",fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6,paddingLeft:2}}>Customer Scope - Actuals</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8,maxHeight:90,overflowY:"auto",padding:6,background:"#FFFBEB",borderRadius:8,border:"1px solid #FDE68A"}}>
-                    {actCatalog.map((cat,i) => {
-                      const sel = actSelected.includes(i);
-                      return (
-                        <div key={i} onClick={()=>{
-                          if(sel){
-                            setActSelected(p=>p.filter(x=>x!==i));
-                            setActItems(p=>p.filter(it=>it.desc!==cat.desc));
-                          } else {
-                            setActSelected(p=>[...p,i]);
-                            setActItems(p=>[...p,{no:String(10+i),desc:cat.desc,unit:cat.unit,rate:cat.rate,actual:0}]);
-                          }
-                        }} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:500,cursor:"pointer",userSelect:"none",background:sel?"#FEF3C7":"white",border:sel?"1.5px solid #F59E0B":"1.5px solid #E5E7EB",color:sel?"#92400E":"#6B7280"}}>
-                          {sel?"✓ ":""}{cat.desc}{cat.rate>0?" (Rs."+cat.rate+"/"+cat.unit+")":""}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {actItems.length>0 && (
-                    <table className="ct">
-                      <thead><tr><th>#</th><th>Description</th><th style={{textAlign:"center"}}>Qty</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
-                      <tbody>
-                        {actItems.map((it,i)=>(
-                          <tr key={i}>
-                            <td className="no">{it.no}</td>
-                            <td className="dc">{it.desc}{it.rate>0?<small>Rs.{it.rate}/{it.unit}</small>:null}</td>
-                            <td style={{textAlign:"center"}}>
-                              <input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:60}}/>
-                            </td>
-                            <td className="ra">{it.actual>0?(it.rate>0?"Rs."+String((it.actual*it.rate).toLocaleString("en-IN")):"Rs."+String(Number(it.actual).toLocaleString("en-IN"))):"—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                  <table className="ct">
+                    <thead><tr><th>#</th><th>Description</th><th colSpan={2} style={{textAlign:"center"}}>Actual Amount (₹)</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
+                    <tbody>
+                      {actItems.map((it,i) => (
+                        <tr key={it.no}>
+                          <td className="no">{it.no}</td>
+                          <td className="dc">{it.desc}</td>
+                          <td colSpan={2} style={{textAlign:"center"}}>
+                            <input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:80}}/>
+                          </td>
+                          <td className="ra">{it.actual>0?`₹${fmtINR(it.actual)}`:"—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* GST Toggle */}
@@ -582,7 +500,7 @@ export default function Home() {
               </>}
 
               {/* ════════════════ PENDING SCREEN ════════════════ */}
-              {authed && screen === "pending" && (
+              {screen === "pending" && (
                 <div className="pending-wrap">
                   <div className="pulse-ring">📲</div>
                   <div className="ptitle">Awaiting Customer Confirmation</div>
@@ -609,7 +527,7 @@ export default function Home() {
               )}
 
               {/* ════════════════ DONE SCREEN ════════════════ */}
-              {authed && screen === "done" && (
+              {screen === "done" && (
                 <div className="done-wrap">
                   <div className="done-icon">✅</div>
                   <div style={{fontSize:17,fontWeight:700,color:"var(--dark)",marginBottom:6}}>Customer Approved!</div>
