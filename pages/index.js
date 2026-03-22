@@ -132,6 +132,32 @@ export default function App() {
     } catch(e) { setMasterMsg('Error loading data'); }
     setMasterLoading(false);
   }
+
+  async function addTechnician() {
+    if (!newTechId||!newTechName) return setMasterMsg('Fill both ID and Name');
+    const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:MASTER_PWD,action:'add',techId:newTechId.toUpperCase(),techName:newTechName})});
+    const json = await res.json();
+    if (json.error) return setMasterMsg(json.error);
+    setTechs(json.techs); setNewTechId(''); setNewTechName(''); setMasterMsg('Technician added!'); setTimeout(()=>setMasterMsg(''),3000);
+  }
+  async function removeTechnician(tid) {
+    if (!confirm('Remove '+tid+'?')) return;
+    const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:MASTER_PWD,action:'remove',techId:tid})});
+    const json = await res.json(); setTechs(json.techs); setMasterMsg('Removed'); setTimeout(()=>setMasterMsg(''),3000);
+  }
+  async function addStockSubmit() {
+    if (!selTech||!selMat||!addQty) return setMasterMsg('Fill all fields');
+    const res = await fetch('/api/inventory/stock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:MASTER_PWD,techId:selTech,materialId:selMat,qty:addQty,costPrice:addCost})});
+    const json = await res.json(); if (json.error) return setMasterMsg(json.error);
+    const r2 = await fetch('/api/inventory/stock?password='+MASTER_PWD); const j2 = await r2.json(); setAllStock(j2.allStock||{});
+    setSelTech(''); setSelMat(''); setAddQty(''); setAddCost(''); setMasterMsg('Stock added!'); setTimeout(()=>setMasterMsg(''),3000);
+  }
+  async function saveMaterialPrices() {
+    const res = await fetch('/api/inventory/materials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:MASTER_PWD,materials:editMats})});
+    const json = await res.json(); if (json.error) return setMasterMsg(json.error);
+    setMaterials(editMats); setMasterMsg('Prices saved!'); setTimeout(()=>setMasterMsg(''),3000);
+  }
+  function getStockVal(tid) { const s=allStock[tid]||{}; let v=0; materials.forEach(m=>{v+=(s[m.id]||0)*m.costPrice;}); return v; }
   async function techLogin() {
     if (!myTechId.trim()) return setTechErr('Enter your Technician ID');
     setTechLoading(true); setTechErr('');
