@@ -348,7 +348,6 @@ async function buildTechPDF(d, tok) {
         <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}><span className="tab-icon">??</span>Master</button>
         <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}><span className="tab-icon">??</span>My Stock</button>
       </div>
-      {mainTab==='tcr'&&<div style={{padding:'10px 8px 10px'}}>
       <Head>
         <title>TCR - GENERAL HVAC</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
@@ -473,6 +472,7 @@ async function buildTechPDF(d, tok) {
         @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
+      {mainTab==='tcr'&&<div style={{padding:'10px 8px 10px'}}>
       <div className="wrap">
         {/* ── HEADER ── */}
         <div className="hdr">
@@ -738,8 +738,7 @@ async function buildTechPDF(d, tok) {
                   <div className="done-icon">✅</div>
                   <div style={{fontSize:17,fontWeight:700,color:"var(--dark)",marginBottom:6}}>Customer Approved!</div>
                   <p style={{fontSize:12.5,color:"var(--muted)",lineHeight:1.6}}>
-                    The customer confirmed on their own device.<br/>
-                    The approved PDF with watermark has been generated on the customer&apos;s phone.
+                    The customer confirmed on their own device.
                   </p>
                   <div className="ref-box">JOB: {doneData?.callNo || f.callNo}</div>
                   <p style={{fontSize:11,color:"#9CA3AF",marginBottom:14}}>Customer: {doneData?.custName} · ₹{fmtINR(doneData?.total)}</p>
@@ -748,6 +747,7 @@ async function buildTechPDF(d, tok) {
                     🔒 Approved independently by customer on their own device<br/>
                     📄 Approved PDF available on customer&apos;s phone
                   </div>
+                  <button className="btn-dl" onClick={downloadTechPDF}><svg width="15" height="15" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/></svg>Download Approved PDF</button>
                   <button className="btn-new" onClick={reset}>＋ Start New TCR</button>
                 </div>
               )}
