@@ -45,6 +45,7 @@ export default function App() {
   const [addItems, setAddItems] = useState(additionalItems());
   const [actItems, setActItems] = useState(actualItems());
   const [actSelected, setActSelected] = useState([]);
+  const [custStand, setCustStand] = useState(false);
   const [screen, setScreen] = useState("form");
   const [token, setToken] = useState("");
   const [waLink, setWaLink] = useState("");
@@ -115,7 +116,13 @@ export default function App() {
     if (it.group==="low"  &&  isHigh) return true;
     return false;
   }
-  function effectiveRate(it) { return (it.no==="4" && (f.tonnage==="2.0+"||f.tonnage==="2.0")) ? 1200 : it.rate; }
+  function effectiveRate(it) {
+    if (it.no==="4") {
+      if (custStand) return 250;
+      return (f.tonnage==="2.0+"||f.tonnage==="2.0") ? 1200 : 750;
+    }
+    return it.rate;
+  }
   function updateAddItem(i, key, val) { setAddItems(prev => { const n=[...prev]; n[i]={...n[i],[key]:val}; return n; }); }
   function updateActItem(i, val) { setActItems(prev => { const n=[...prev]; n[i]={...n[i],actual:parseFloat(val)||0}; return n; }); }
   function updateUnit(i, key, val) { setUnits(prev => { const n=[...prev]; n[i]={...n[i],[key]:val}; return n; }); }
@@ -252,7 +259,7 @@ export default function App() {
     setScreen("form");
     setF({custName:"",mobile:"",callNo:"",serviceDate:"",techName:"",ssdName:"",address:"",tonnage:"",unitCount:1,gstOn:false,gstNumber:""});
     setUnits([{model:"",serial:"",pipeSize:""}]); setAddItems(additionalItems()); setActItems(actualItems()); setActSelected([]);
-    setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800); pdfBlobRef.current=null;
+    setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800); pdfBlobRef.current=null; setCustStand(false);
   }
 
   const { sub, gst, total } = calcTotals();
@@ -526,6 +533,14 @@ export default function App() {
                     <div className="sec-h">
                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                       Installation Charges
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:9,marginBottom:10}}>
+                      <label style={{position:'relative',display:'inline-block',width:38,height:22,flexShrink:0}}>
+                        <input type="checkbox" checked={custStand} onChange={e=>setCustStand(e.target.checked)} style={{opacity:0,width:0,height:0}}/>
+                        <span style={{position:'absolute',inset:0,background:custStand?'#16A34A':'#9CA3AF',borderRadius:11,cursor:'pointer',transition:'.2s'}}></span>
+                        <span style={{position:'absolute',height:16,width:16,left:custStand?19:3,bottom:3,background:'white',borderRadius:'50%',transition:'.2s'}}></span>
+                      </label>
+                      <span style={{fontSize:12,fontWeight:500,color:'#92400E'}}>Customer supplies ODU Stand <strong>(Fixing only @ ₹250)</strong></span>
                     </div>
                     <table className="ct" style={{marginBottom:10}}>
                       <thead><tr><th>#</th><th>Description</th><th style={{textAlign:"center"}}>Rate</th><th style={{textAlign:"center"}}>Qty (Ft)</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
