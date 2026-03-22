@@ -1,21 +1,26 @@
 import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 
-const LOGO =  + logo + ;
-
 const additionalItems = () => [
-  {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:850,  unit:"Ft", group:"low",  qty:0},
-  {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:950,  unit:"Ft", group:"high", qty:0},
-  {no:"3",   desc:"Supply and laying of Electrical 3/4 Core Cable",                  rate:120,  unit:"Ft", group:"all",  qty:0},
+  {no:"2.1", desc:"Copper pipe With Insulation - Supply & Labour, Upto 2 Ton",       rate:259,  unit:"Ft", group:"low",  qty:0},
+  {no:"2.2", desc:"Copper pipe With Insulation - Supply & Labour, 2.5/3/4 Ton",      rate:290,  unit:"Ft", group:"high", qty:0},
+  {no:"3",   desc:"Supply and laying of Electrical 3/4 Core Cable",                  rate:37,   unit:"Ft", group:"all",  qty:0},
   {no:"4",   desc:"ODU Stand Supply and Fixing / Only Fixing",                        rate:750,  unit:"No.", group:"all",  qty:0},
-  {no:"5",   desc:"Drain Pipe supply and fixing",                                     rate:100,  unit:"Ft", group:"all",  qty:0},
+  {no:"5",   desc:"Drain Pipe supply and fixing",                                     rate:30,   unit:"Ft", group:"all",  qty:0},
   {no:"6",   desc:"Dismantling of OLD / Existing Split AC Unit",                      rate:750,  unit:"No.", group:"all",  qty:0},
 ];
 
-const actualItems = () => [
-  {no:"7", desc:"Wall Chiseling / Chipping",          actual:0},
-  {no:"8", desc:"Beam / Concrete Wall Core Drilling", actual:0},
-  {no:"9", desc:"Miscellaneous (Please specify)",     actual:0},
+const actCatalog = [
+  {desc:"Wall Chiseling / Chipping",          unit:"Ft",   rate:0},
+  {desc:"Beam / Concrete Wall Core Drilling", unit:"No.",  rate:0},
+  {desc:"Miscellaneous (Please specify)",     unit:"No.",  rate:0},
+  {desc:"Wrapping Tape",                      unit:"Ft",   rate:24},
+  {desc:"Rubber Pad",                         unit:"Unit", rate:200},
+  {desc:"Plug Top",                           unit:"Unit", rate:150},
+];
+
+const actualItems = () => [];
+const x = [
 ];
 
 const tonOptions = [
@@ -29,15 +34,21 @@ const tonOptions = [
 
 const fmtINR = n => Number(n||0).toLocaleString('en-IN');
 
-export default function Home() {
+export default function App() {
   // ── Form fields ──
+  const [mainTab, setMainTab] = useState('tcr');
+  const [authed, setAuthed] = useState(false);
+  const [pwdInput, setPwdInput] = useState('');
+  const [pwdErr, setPwdErr] = useState('');
   const [f, setF] = useState({
     custName:"", mobile:"", callNo:"", serviceDate:"", techName:"", ssdName:"",
     address:"", tonnage:"", unitCount:1, gstOn:false, gstNumber:""
   });
-  const [units, setUnits] = useState([{model:"",serial:""}]);
+  const [units, setUnits] = useState([{model:"",serial:"",pipeSize:""}]);
+  const [techList, setTechList] = useState([]);
   const [addItems, setAddItems] = useState(additionalItems());
   const [actItems, setActItems] = useState(actualItems());
+  const [actSelected, setActSelected] = useState([]);
 
   // ── App state ──
   const [screen, setScreen] = useState("form");   // form | pending | done
@@ -48,16 +59,41 @@ export default function Home() {
   const [remaining, setRemaining] = useState(1800);
   const [doneData, setDoneData] = useState(null);
   const pollRef = useRef(null);
+  const pdfBlobRef = useRef(null);
   const timerRef = useRef(null);
 
+  const [masterAuthed, setMasterAuthed] = useState(false);
+  const [masterPwd, setMasterPwd] = useState("");
+  const [masterPwdErr, setMasterPwdErr] = useState("");
+  const [masterTab, setMasterTab] = useState("stock");
+  const [techs, setTechs] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [allStock, setAllStock] = useState({});
+  const [masterLoading, setMasterLoading] = useState(false);
+  const [masterMsg, setMasterMsg] = useState("");
+  const [newTechId, setNewTechId] = useState("");
+  const [newTechName, setNewTechName] = useState("");
+  const [selTech, setSelTech] = useState("");
+  const [selMat, setSelMat] = useState("");
+  const [addQty, setAddQty] = useState("");
+  const [addCost, setAddCost] = useState("");
+  const [editMats, setEditMats] = useState([]);
+  const [myTechId, setMyTechId] = useState("");
+  const [techAuthed, setTechAuthed] = useState(false);
+  const [techData, setTechData] = useState(null);
+  const [techErr, setTechErr] = useState("");
+  const [techLoading, setTechLoading] = useState(false);
+  const MASTER_PWD = "Project@1";
   const field = (k, v) => setF(p => ({...p, [k]: v}));
 
   // Unit count change
+  useEffect(() => { fetch('/api/inventory/technicians').then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setTechList(d); }); }, []);
+
   useEffect(() => {
     const n = parseInt(f.unitCount) || 1;
     setUnits(prev => {
       const next = [...prev];
-      while (next.length < n) next.push({model:"",serial:""});
+      while (next.length < n) next.push({model:"",serial:"",pipeSize:""});
       return next.slice(0, n);
     });
   }, [f.unitCount]);
@@ -71,7 +107,7 @@ export default function Home() {
       const rate = (it.no === "4" && (ton==="2.0+"||ton==="2.0")) ? 1200 : it.rate;
       sub += rate * (parseFloat(it.qty)||0);
     });
-    actItems.forEach(it => sub += parseFloat(it.actual)||0);
+    actItems.forEach(it => { const qty=parseFloat(it.actual)||0; sub += it.rate>0 ? qty*it.rate : qty; });
     const gst = f.gstOn ? Math.round(sub * 0.18) : 0;
     return { sub, gst, total: sub + gst };
   }
@@ -87,7 +123,94 @@ export default function Home() {
 
   function effectiveRate(it) {
     const ton = f.tonnage;
-    return (it.no==="4" && (ton==="2.0+"||ton==="2.0")) ? 1200 : it.rate;
+  async function loadMasterAll() {
+    setMasterLoading(true);
+    try {
+      const res = await fetch('/api/inventory/stock?password=' + MASTER_PWD);
+      const json = await res.json();
+      setTechs(json.techs||[]); setMaterials(json.materials||[]); setAllStock(json.allStock||{}); setEditMats(json.materials||[]);
+    } catch(e) { setMasterMsg('Error loading data'); }
+    setMasterLoading(false);
+  }async function techLogin() {
+    if (!myTechId.trim()) return setTechErr('Enter your Technician ID');
+    setTechLoading(true); setTechErr('');
+    try {
+      const res = await fetch('/api/inventory/stock?techId='+myTechId.trim().toUpperCase());
+      const json = await res.json();
+      if (json.error) { setTechErr('Invalid Technician ID'); setTechLoading(false); return; }
+      setTechData(json); setTechAuthed(true);
+    } catch(e) { setTechErr('Network error'); }
+    setTechLoading(false);
+  }
+async function buildTechPDF(d, tok) {
+    try {
+      const {jsPDF} = await import('jspdf');
+      await import('jspdf-autotable');
+      const doc = new jsPDF({unit:'mm',format:'a4',compress:true});
+      const W=210,M=14;let y=0;
+      doc.setFillColor(232,0,29);doc.rect(0,0,W,30,'F');
+      doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(11);
+      doc.text('GENERAL HVAC Solutions India Pvt Ltd',M+34,13);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+      doc.text('Authorized Service Partner - TCR cum Customer Confirmation',M+34,19);
+      doc.setFontSize(9);doc.setFont('helvetica','bold');
+      doc.text('AC INSTALLATION - TCR CHARGE CONFIRMATION',M+34,26);
+      doc.setFontSize(7);doc.setFont('helvetica','normal');
+      doc.text('Job No: '+d.callNo,W-M,10,{align:'right'});
+      doc.text('Date: '+d.serviceDate,W-M,16,{align:'right'});
+      y=36;
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({opacity:0.07}));
+      doc.setTextColor(22,163,74);doc.setFont('helvetica','bold');doc.setFontSize(62);
+      doc.text('APPROVED',W/2,170,{align:'center',angle:45});
+      doc.restoreGraphicsState();
+      const sH=(t,c)=>{doc.setFillColor(...c);doc.rect(M,y,W-M*2,6.5,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(t.toUpperCase(),M+3,y+4.5);y+=8;};
+      sH('Customer & Service Details',[40,40,40]);
+      doc.setFillColor(250,250,250);doc.setDrawColor(230,230,230);doc.rect(M,y,W-M*2,28,'FD');
+      [['CUSTOMER',d.custName],['MOBILE',d.mobile],['JOB NO.',d.callNo],['DATE',d.serviceDate],['TECHNICIAN',d.techName],['SSD/SF',d.ssdName||'--']].forEach(([k,v],i)=>{
+        const cx=M+(i%2)*((W-M*2)/2)+3,cy=y+5+(Math.floor(i/2)*9);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(130,130,130);doc.text(k,cx,cy);
+        doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);doc.text(String(v||'--'),cx,cy+5);
+      });
+      y+=32;
+      sH('Installation Charges',[40,40,40]);
+      const rows=[['1','Standard Installation (Free)','--','--','Rs.0']];
+      (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/Ft',i.qty+' Ft','Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
+      (d.actualItems||[]).filter(i=>i.actual>0).forEach(i=>{const amt=i.rate>0?i.rate*i.actual:i.actual;rows.push([i.no,i.desc,i.unit||'Actual',i.actual,'Rs.'+Number(amt).toLocaleString('en-IN')]);});
+      doc.autoTable({startY:y,margin:{left:M,right:M},head:[['#','Description','Rate','Qty','Amount']],body:rows,styles:{fontSize:8,cellPadding:2.5,textColor:[50,50,50]},headStyles:{fillColor:[30,30,30],textColor:[255,255,255],fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[248,248,248]},columnStyles:{0:{cellWidth:10},1:{cellWidth:95},2:{cellWidth:28},3:{cellWidth:20},4:{cellWidth:25,halign:'right'}},theme:'grid'});
+      y=doc.lastAutoTable.finalY+6;
+      const bx=W-M-70,bw=70,fR=n=>'Rs.'+Number(n).toLocaleString('en-IN');
+      doc.setFillColor(248,248,248);doc.setDrawColor(220,220,220);doc.roundedRect(bx,y,bw,d.gstOn?25:18,2,2,'FD');
+      doc.setFontSize(8);doc.setTextColor(80,80,80);doc.setFont('helvetica','normal');
+      doc.text('Sub Total',bx+3,y+6);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);doc.text(fR(d.sub),bx+bw-3,y+6,{align:'right'});
+      if(d.gstOn){doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text('GST @ 18%',bx+3,y+13);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);doc.text(fR(d.gst),bx+bw-3,y+13,{align:'right'});doc.setDrawColor(200,200,200);doc.line(bx+3,y+15,bx+bw-3,y+15);doc.setFontSize(10);doc.setTextColor(232,0,29);doc.text('TOTAL',bx+3,y+22);doc.text(fR(d.total),bx+bw-3,y+22,{align:'right'});y+=29;}
+      else{doc.setDrawColor(200,200,200);doc.line(bx+3,y+11,bx+bw-3,y+11);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(232,0,29);doc.text('TOTAL',bx+3,y+16);doc.text(fR(d.total),bx+bw-3,y+16,{align:'right'});y+=22;}
+      y+=6;
+      sH('Customer Confirmation - Digitally Approved',[22,163,74]);
+      doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.rect(M,y,W-M*2,32,'FD');
+      doc.setFillColor(22,163,74);doc.roundedRect(M+3,y+4,54,8,2,2,'F');
+      doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+      doc.text('APPROVED BY CUSTOMER',M+30,y+9,{align:'center'});
+      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(70,70,70);
+      doc.text('Confirmed via unique one-time secure link on customer own device',M+3,y+17);
+      doc.text('Confirmed at: '+new Date().toLocaleString('en-IN'),M+3,y+23);
+      doc.text('Token Ref: '+String(tok).slice(0,16)+'...',M+3,y+29);
+      y+=36;
+      doc.setFillColor(30,30,30);doc.rect(0,287,W,10,'F');
+      doc.setTextColor(160,160,160);doc.setFont('helvetica','normal');doc.setFontSize(7);
+      doc.text('GENERAL HVAC Solutions India Pvt Ltd | Approved TCR | Job: '+d.callNo,W/2,293,{align:'center'});
+      pdfBlobRef.current=doc.output('blob');
+    } catch(e){console.log('PDF error:',e);}
+  }  function downloadTechPDF() {
+    if (!pdfBlobRef.current) return;
+    const url=URL.createObjectURL(pdfBlobRef.current);
+    const a=document.createElement("a");a.href=url;a.download="TCR_APPROVED_"+(doneData&&doneData.callNo?doneData.callNo:"receipt")+".pdf";a.click();URL.revokeObjectURL(url);
+  }
+  async function techRefresh() {
+    setTechLoading(true);
+    const res = await fetch('/api/inventory/stock?techId='+myTechId.trim().toUpperCase());
+    const json = await res.json(); setTechData(json); setTechLoading(false);
+  }  return (it.no==="4" && (ton==="2.0+"||ton==="2.0")) ? 1200 : it.rate;
   }
 
   function updateAddItem(i, key, val) {
@@ -133,6 +256,27 @@ export default function Home() {
       setToken(json.token);
       setWaLink(json.waLink);
       setScreen("pending");
+      try {
+        const deductItems = [];
+        const pipeMap = {"1/4 & 1/2":"copper_pair_14_12","3/8 & 5/8":"copper_pair_38_58","1/2 & 5/8":"copper_pair_12_58"};
+        const pipeQty = addItems.find(it=>it.no==="2.1"||it.no==="2.2");
+        units.forEach(u => {
+          if (!u.pipeSize) return;
+          const matId = pipeMap[u.pipeSize];
+          if (matId && pipeQty && pipeQty.qty>0) {
+            const ex = deductItems.find(d=>d.materialId===matId);
+            if (ex) ex.qty += parseFloat(pipeQty.qty)||0;
+            else deductItems.push({materialId:matId, qty:parseFloat(pipeQty.qty)||0});
+          }
+        });
+        const matMap = {"3":"elec_cable","4":"odu_stand","5":"drain_pipe","6":"dismantling"};
+        addItems.forEach(it => { if (matMap[it.no]&&it.qty>0) deductItems.push({materialId:matMap[it.no],qty:parseFloat(it.qty)||0}); });
+        const actMap = {"Wrapping Tape":"wrapping_tape","Rubber Pad":"rubber_pad","Plug Top":"plug_top"};
+        actItems.forEach(it => { const mid=actMap[it.desc]; if(mid&&it.actual>0) deductItems.push({materialId:mid,qty:parseFloat(it.actual)||0}); });
+        if (deductItems.length>0 && f.techName) {
+          await fetch('/api/inventory/deduct',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({techId:f.techName,items:deductItems,jobNo:f.callNo})});
+        }
+      } catch(e) { console.log('Deduct error:',e); }
       setRemaining(1800);
       startPolling(json.token);
     } catch(e) {
@@ -152,6 +296,7 @@ export default function Home() {
           clearInterval(timerRef.current);
           setDoneData(json.fullData);
           setScreen("done");
+          await buildTechPDF(json.fullData, tok);
         }
         if (json.status === "expired") {
           clearInterval(pollRef.current);
@@ -186,7 +331,7 @@ export default function Home() {
     clearInterval(timerRef.current);
     setScreen("form");
     setF({custName:"",mobile:"",callNo:"",serviceDate:"",techName:"",ssdName:"",address:"",tonnage:"",unitCount:1,gstOn:false,gstNumber:""});
-    setUnits([{model:"",serial:""}]);
+    setUnits([{model:"",serial:"",pipeSize:""}]);
     setAddItems(additionalItems());
     setActItems(actualItems());
     setErr("");
@@ -198,6 +343,12 @@ export default function Home() {
 
   return (
     <>
+      <div className="tab-bar">
+        <button className={"tab-btn"+(mainTab==='tcr'?' act':'')} onClick={()=>setMainTab('tcr')}><span className="tab-icon">??</span>TCR</button>
+        <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}><span className="tab-icon">??</span>Master</button>
+        <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}><span className="tab-icon">??</span>My Stock</button>
+      </div>
+      {mainTab==='tcr'&&<div style={{padding:'10px 8px 10px'}}>
       <Head>
         <title>TCR - GENERAL HVAC</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
@@ -206,7 +357,7 @@ export default function Home() {
 
       <style jsx global>{`
         *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Poppins',sans-serif;background:#E5DDD5;min-height:100vh;padding:10px 8px 40px;color:#111827}
+        body{font-family:'Poppins',sans-serif;background:#E5DDD5;min-height:100vh;padding:0 0 66px 0;color:#111827}
         :root{--brand:#E8001D;--green:#16A34A;--green2:#15803D;--dark:#111827;--mid:#374151;--muted:#6B7280;--light:#F3F4F6;--border:#E5E7EB}
         .wrap{max-width:480px;margin:0 auto}
 
@@ -314,25 +465,24 @@ export default function Home() {
         .done-icon{width:70px;height:70px;background:#DCFCE7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:34px}
         .ref-box{font-family:'DM Mono',monospace;font-size:11.5px;background:var(--light);padding:5px 12px;border-radius:8px;color:var(--dark);display:inline-block;margin:8px 0}
         .btn-new{width:100%;padding:12px;background:linear-gradient(135deg,#E8001D,#9B0013);color:white;border:none;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px}
+        .btn-dl{width:100%;padding:12px;background:linear-gradient(135deg,#1D4ED8,#1E40AF);color:white;border:none;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:7px}
+        .tab-bar{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #E5E7EB;display:flex;z-index:100;box-shadow:0 -2px 10px rgba(0,0,0,.08)}
+        .tab-btn{flex:1;padding:10px 4px 8px;border:none;background:none;font-family:'Poppins',sans-serif;font-size:10px;font-weight:500;color:#9CA3AF;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+        .tab-btn.act{color:#E8001D;font-weight:700}
+        .tab-icon{font-size:18px}
+        @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
       <div className="wrap">
         {/* ── HEADER ── */}
         <div className="hdr">
           <div className="ht">
-            <div className="logo">
-              <img src={LOGO} alt="O General"/>
-            </div>
+            
             <div>
               <div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div>
-              <div className="hsub">Authorized O General - Fujitsu Installation Partner</div>
+              <div className="hsub">Authorized Service Partner - TCR cum Customer Confirmation</div>
               <div className="hssd" id="ssdDisp">{f.ssdName ? `📍 ${f.ssdName}` : ""}</div>
             </div>
-          </div>
-          <div className="hsubtitle">AC Installation - TCR Charge Confirmation</div>
-          <div className="hbadge">
-            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            TCR
           </div>
         </div>
 
@@ -340,8 +490,26 @@ export default function Home() {
           <div className="wa-inner">
             <div className="wa-msg">
 
+              {/* PASSWORD SCREEN */}
+              {!authed && (
+                <div style={{padding:"40px 20px",textAlign:"center"}}>
+                  <div style={{fontSize:32,marginBottom:12}}>🔐</div>
+                  <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>Technician Login</div>
+                  <div style={{fontSize:12,color:"#6B7280",marginBottom:20}}>Enter password to access TCR form</div>
+                  <input type="password" value={pwdInput} onChange={e=>setPwdInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}}
+                    placeholder="Enter password"
+                    style={{width:"100%",padding:"10px 14px",border:"1.5px solid #E5E7EB",borderRadius:10,fontSize:14,marginBottom:8,outline:"none",textAlign:"center",letterSpacing:2}}
+                  />
+                  {pwdErr && <div style={{color:"#DC2626",fontSize:12,marginBottom:8}}>{pwdErr}</div>}
+                  <button onClick={()=>{if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}
+                    style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#E8001D,#9B0013)",color:"white",border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer"}}>
+                    Login
+                  </button>
+                </div>
+              )}
               {/* ════════════════ FORM SCREEN ════════════════ */}
-              {screen === "form" && <>
+              {authed && screen === "form" && <>
 
                 {/* ① Customer Details */}
                 <div className="sec">
@@ -358,7 +526,12 @@ export default function Home() {
                     <div className="field"><label>Service Date</label><input type="date" value={f.serviceDate} onChange={e=>field("serviceDate",e.target.value)}/></div>
                   </div>
                   <div className="fg">
-                    <div className="field"><label>Technician Name *</label><input value={f.techName} onChange={e=>field("techName",e.target.value)} placeholder="Technician name"/></div>
+                    <div className="field"><label>Technician *</label>
+                      <select value={f.techName} onChange={e=>field("techName",e.target.value)} style={{width:"100%",padding:"8px 10px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:12,outline:"none",background:"white"}}>
+                        <option value="">Select Technician...</option>
+                        {techList.map(t=><option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
+                      </select>
+                    </div>
                     <div className="field"><label>SSD / SF Name</label><input value={f.ssdName} onChange={e=>field("ssdName",e.target.value)} placeholder="SSD or SF name"/></div>
                   </div>
                   <div className="fg one">
@@ -393,6 +566,19 @@ export default function Home() {
                       <div className="fg">
                         <div className="field"><label>Model No.</label><input value={u.model} onChange={e=>updateUnit(i,"model",e.target.value)} placeholder="Model number"/></div>
                         <div className="field"><label>Serial No.</label><input value={u.serial} onChange={e=>updateUnit(i,"serial",e.target.value)} placeholder="Serial number"/></div>
+                        <div className="field" style={{gridColumn:"1/-1"}}><label>Pipe Size (Pair) *</label>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:3}}>
+                            {["1/4 & 1/2","3/8 & 5/8","1/2 & 5/8"].map(ps=>(
+                              <div key={ps} onClick={()=>updateUnit(i,"pipeSize",ps)}
+                                style={{padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:500,cursor:"pointer",userSelect:"none",
+                                  background:u.pipeSize===ps?"#DBEAFE":"white",
+                                  border:u.pipeSize===ps?"1.5px solid #3B82F6":"1.5px solid #E5E7EB",
+                                  color:u.pipeSize===ps?"#1D4ED8":"#6B7280"}}>
+                                {u.pipeSize===ps?"✓ ":""}{ps}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -439,21 +625,41 @@ export default function Home() {
                   </table>
 
                   <div style={{fontSize:"9.5px",fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6,paddingLeft:2}}>Customer Scope - Actuals</div>
-                  <table className="ct">
-                    <thead><tr><th>#</th><th>Description</th><th colSpan={2} style={{textAlign:"center"}}>Actual Amount (₹)</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
-                    <tbody>
-                      {actItems.map((it,i) => (
-                        <tr key={it.no}>
-                          <td className="no">{it.no}</td>
-                          <td className="dc">{it.desc}</td>
-                          <td colSpan={2} style={{textAlign:"center"}}>
-                            <input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:80}}/>
-                          </td>
-                          <td className="ra">{it.actual>0?`₹${fmtINR(it.actual)}`:"—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8,maxHeight:90,overflowY:"auto",padding:6,background:"#FFFBEB",borderRadius:8,border:"1px solid #FDE68A"}}>
+                    {actCatalog.map((cat,i) => {
+                      const sel = actSelected.includes(i);
+                      return (
+                        <div key={i} onClick={()=>{
+                          if(sel){
+                            setActSelected(p=>p.filter(x=>x!==i));
+                            setActItems(p=>p.filter(it=>it.desc!==cat.desc));
+                          } else {
+                            setActSelected(p=>[...p,i]);
+                            setActItems(p=>[...p,{no:String(10+i),desc:cat.desc,unit:cat.unit,rate:cat.rate,actual:0}]);
+                          }
+                        }} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:500,cursor:"pointer",userSelect:"none",background:sel?"#FEF3C7":"white",border:sel?"1.5px solid #F59E0B":"1.5px solid #E5E7EB",color:sel?"#92400E":"#6B7280"}}>
+                          {sel?"✓ ":""}{cat.desc}{cat.rate>0?" (Rs."+cat.rate+"/"+cat.unit+")":""}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {actItems.length>0 && (
+                    <table className="ct">
+                      <thead><tr><th>#</th><th>Description</th><th style={{textAlign:"center"}}>Qty</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
+                      <tbody>
+                        {actItems.map((it,i)=>(
+                          <tr key={i}>
+                            <td className="no">{it.no}</td>
+                            <td className="dc">{it.desc}{it.rate>0?<small>Rs.{it.rate}/{it.unit}</small>:null}</td>
+                            <td style={{textAlign:"center"}}>
+                              <input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:60}}/>
+                            </td>
+                            <td className="ra">{it.actual>0?(it.rate>0?"Rs."+String((it.actual*it.rate).toLocaleString("en-IN")):"Rs."+String(Number(it.actual).toLocaleString("en-IN"))):"—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
 
                 {/* GST Toggle */}
@@ -500,7 +706,7 @@ export default function Home() {
               </>}
 
               {/* ════════════════ PENDING SCREEN ════════════════ */}
-              {screen === "pending" && (
+              {authed && screen === "pending" && (
                 <div className="pending-wrap">
                   <div className="pulse-ring">📲</div>
                   <div className="ptitle">Awaiting Customer Confirmation</div>
@@ -527,7 +733,7 @@ export default function Home() {
               )}
 
               {/* ════════════════ DONE SCREEN ════════════════ */}
-              {screen === "done" && (
+              {authed && screen === "done" && (
                 <div className="done-wrap">
                   <div className="done-icon">✅</div>
                   <div style={{fontSize:17,fontWeight:700,color:"var(--dark)",marginBottom:6}}>Customer Approved!</div>
@@ -554,6 +760,175 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      </div>}
+      {mainTab==='master'&&(
+        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
+          <div style={{maxWidth:720,margin:'0 auto'}}>
+            {!masterAuthed?(
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+                <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:360,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
+                  <div style={{fontSize:36,marginBottom:12}}>📦</div>
+                  <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>Inventory Master</div>
+                  <input type="password" value={masterPwd} onChange={e=>setMasterPwd(e.target.value)} placeholder="Master password" style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center'}}/>
+                  {masterPwdErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{masterPwdErr}</div>}
+                  <button onClick={()=>{if(masterPwd===MASTER_PWD){setMasterAuthed(true);setMasterPwdErr('');}else setMasterPwdErr('Incorrect password');}} style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer'}}>Login</button>
+                </div>
+              </div>
+            ):(
+              <>
+                <div style={{background:'linear-gradient(135deg,#E8001D,#9B0013)',borderRadius:14,padding:'14px 16px',color:'white',marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:700}}>📦 Inventory Master Dashboard</div>
+                </div>
+                {masterMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{masterMsg}</div>}
+                <div style={{display:'flex',gap:6,marginBottom:12}}>
+                  {[['stock','📊 Stock'],['technicians','👷 Technicians'],['materials','🏷️ Prices']].map(([k,l])=>(
+                    <button key={k} onClick={()=>setMasterTab(k)} style={{flex:1,padding:'9px 4px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:12,fontWeight:600,cursor:'pointer',background:masterTab===k?'white':'rgba(255,255,255,.5)',color:masterTab===k?'#E8001D':'#6B7280'}}>{l}</button>
+                  ))}
+                </div>
+                {masterLoading&&<div style={{textAlign:'center',padding:40}}>Loading...</div>}
+                {!masterLoading&&masterTab==='stock'&&(
+                  <div>
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>➕ Add Stock</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                        <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',display:'block',marginBottom:3}}>Technician</label>
+                          <select value={selTech} onChange={e=>setSelTech(e.target.value)} style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}>
+                            <option value="">Select...</option>{techs.map(t=><option key={t.id} value={t.id}>{t.id} - {t.name}</option>)}
+                          </select></div>
+                        <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',display:'block',marginBottom:3}}>Material</label>
+                          <select value={selMat} onChange={e=>setSelMat(e.target.value)} style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}>
+                            <option value="">Select...</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name}{m.sub?' ('+m.sub+')':''}</option>)}
+                          </select></div>
+                        <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',display:'block',marginBottom:3}}>Qty</label>
+                          <input type="number" value={addQty} onChange={e=>setAddQty(e.target.value)} placeholder="0" style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/></div>
+                        <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',display:'block',marginBottom:3}}>Cost Price</label>
+                          <input type="number" value={addCost} onChange={e=>setAddCost(e.target.value)} placeholder="0" style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/></div>
+                      </div>
+                      <button onClick={addStockSubmit} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>Add Stock</button>
+                    </div>
+                    {techs.map(t=>{
+                      const s=allStock[t.id]||{};const tv=getStockVal(t.id);const zi=materials.filter(m=>(s[m.id]||0)===0);
+                      return (
+                        <div key={t.id} style={{background:'white',borderRadius:12,padding:14,marginBottom:10,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                            <div><div style={{fontSize:13,fontWeight:700}}>{t.name}</div><div style={{fontSize:10,color:'#6B7280'}}>ID: {t.id}</div></div>
+                            <div style={{textAlign:'right'}}><div style={{fontSize:13,fontWeight:700,color:'#E8001D'}}>Rs.{fmtINR(tv)}</div><div style={{fontSize:9,color:'#6B7280'}}>Stock Value</div></div>
+                          </div>
+                          {zi.length>0&&<div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:6,padding:'5px 8px',fontSize:10,color:'#DC2626',marginBottom:8}}>🔴 Zero: {zi.map(m=>m.name).join(', ')}</div>}
+                          <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                            <thead><tr style={{background:'#F9FAFB'}}><th style={{padding:'5px 8px',textAlign:'left',fontSize:10,color:'#6B7280'}}>Material</th><th style={{padding:'5px 8px',textAlign:'center',fontSize:10,color:'#6B7280'}}>Stock</th><th style={{padding:'5px 8px',textAlign:'right',fontSize:10,color:'#6B7280'}}>Value</th></tr></thead>
+                            <tbody>{materials.map(m=>{const qty=s[m.id]||0;const val=qty*m.costPrice;const zero=qty===0;return(
+                              <tr key={m.id} style={{borderTop:'1px solid #F3F4F6',background:zero?'#FFF5F5':'white'}}>
+                                <td style={{padding:'5px 8px',color:zero?'#DC2626':'#111827'}}>{m.name}{m.sub?<span style={{fontSize:9,color:'#6B7280',marginLeft:4}}>({m.sub})</span>:null}</td>
+                                <td style={{padding:'5px 8px',textAlign:'center',fontFamily:'monospace',fontWeight:600,color:zero?'#DC2626':'#111827'}}>{zero?'0':qty} {m.unit}</td>
+                                <td style={{padding:'5px 8px',textAlign:'right',fontFamily:'monospace',color:'#6B7280'}}>Rs.{fmtINR(val)}</td>
+                              </tr>);})}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {!masterLoading&&masterTab==='technicians'&&(
+                  <div>
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>➕ Add Technician</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                        <div><input value={newTechId} onChange={e=>setNewTechId(e.target.value)} placeholder="Tech ID" style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/></div>
+                        <div><input value={newTechName} onChange={e=>setNewTechName(e.target.value)} placeholder="Full Name" style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/></div>
+                      </div>
+                      <button onClick={addTechnician} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>Add Technician</button>
+                    </div>
+                    <div style={{background:'white',borderRadius:12,padding:14,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>👷 All Technicians ({techs.length})</div>
+                      {techs.length===0&&<div style={{color:'#9CA3AF',fontSize:12,textAlign:'center',padding:20}}>No technicians yet</div>}
+                      {techs.map(t=>(
+                        <div key={t.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid #F3F4F6'}}>
+                          <div><div style={{fontSize:13,fontWeight:600}}>{t.name}</div><div style={{fontSize:10,color:'#6B7280'}}>{t.id}</div></div>
+                          <button onClick={()=>removeTechnician(t.id)} style={{padding:'4px 10px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:11,cursor:'pointer'}}>Remove</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!masterLoading&&masterTab==='materials'&&(
+                  <div style={{background:'white',borderRadius:12,padding:14,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                    <div style={{fontSize:12,fontWeight:700,marginBottom:12}}>🏷️ Material Prices</div>
+                    {editMats.map((m,i)=>(
+                      <div key={m.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 80px',gap:8,alignItems:'center',padding:'7px 0',borderBottom:'1px solid #F3F4F6'}}>
+                        <div style={{fontSize:12}}>{m.name}{m.sub?<span style={{fontSize:10,color:'#6B7280'}}> ({m.sub})</span>:null}</div>
+                        <input type="number" value={m.costPrice} onChange={e=>{const n=[...editMats];n[i]={...n[i],costPrice:parseFloat(e.target.value)||0};setEditMats(n);}} style={{padding:'5px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',textAlign:'center'}}/>
+                        <input type="number" value={m.sellingRate} onChange={e=>{const n=[...editMats];n[i]={...n[i],sellingRate:parseFloat(e.target.value)||0};setEditMats(n);}} style={{padding:'5px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',textAlign:'center'}}/>
+                      </div>
+                    ))}
+                    <button onClick={saveMaterialPrices} style={{width:'100%',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',marginTop:12}}>Save Prices</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {mainTab==='inventory'&&(
+        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
+          <div style={{maxWidth:480,margin:'0 auto'}}>
+            {!techAuthed?(
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+                <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:360,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
+                  <div style={{fontSize:36,marginBottom:12}}>🔧</div>
+                  <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>My Inventory</div>
+                  <div style={{fontSize:12,color:'#6B7280',marginBottom:24}}>Enter your Technician ID</div>
+                  <input value={myTechId} onChange={e=>setMyTechId(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&techLogin()} placeholder="e.g. TECH001" style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center',letterSpacing:2,fontFamily:'monospace'}}/>
+                  {techErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{techErr}</div>}
+                  <button onClick={techLogin} disabled={techLoading} style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer'}}>{techLoading?'Loading...':'View My Stock'}</button>
+                </div>
+              </div>
+            ):(
+              <>
+                <div style={{background:'linear-gradient(135deg,#E8001D,#9B0013)',borderRadius:14,padding:'14px 16px',color:'white',marginBottom:12}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700}}>🔧 {techData&&techData.tech?techData.tech.name:''}</div>
+                      <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginTop:2}}>ID: {techData&&techData.tech?techData.tech.id:''}</div>
+                    </div>
+                    <button onClick={techRefresh} style={{background:'rgba(255,255,255,.2)',border:'none',color:'white',padding:'6px 12px',borderRadius:8,fontSize:11,cursor:'pointer'}}>{techLoading?'...':'↻ Refresh'}</button>
+                  </div>
+                </div>
+                {(()=>{
+                  const stock=(techData&&techData.stock)||{};
+                  const mats=(techData&&techData.materials)||[];
+                  const zi=mats.filter(m=>(stock[m.id]||0)===0);
+                  return (<>
+                    {zi.length>0&&(
+                      <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
+                        <div style={{fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:4}}>⚠️ Zero Stock Alert</div>
+                        {zi.map(m=><div key={m.id} style={{fontSize:11,color:'#DC2626'}}>• {m.name}{m.sub?' ('+m.sub+')':''} — 0 {m.unit}</div>)}
+                      </div>
+                    )}
+                    <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{background:'#111827',padding:'8px 14px',display:'grid',gridTemplateColumns:'1fr 80px 70px'}}>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>MATERIAL</div>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'center'}}>STOCK</div>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>UNIT</div>
+                      </div>
+                      {mats.map(m=>{const qty=stock[m.id]||0;const zero=qty===0;return(
+                        <div key={m.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 70px',padding:'10px 14px',borderBottom:'1px solid #F3F4F6',background:zero?'#FFF5F5':'white',alignItems:'center'}}>
+                          <div><div style={{fontSize:12,fontWeight:500,color:zero?'#DC2626':'#111827'}}>{m.name}</div>{m.sub&&<div style={{fontSize:10,color:'#6B7280'}}>{m.sub}</div>}</div>
+                          <div style={{textAlign:'center',fontFamily:'monospace',fontSize:14,fontWeight:700,color:zero?'#DC2626':'#16A34A'}}>{zero?'0':qty}</div>
+                          <div style={{textAlign:'right',fontSize:11,color:'#6B7280'}}>{m.unit}</div>
+                        </div>
+                      );})}
+                    </div>
+                    <div style={{textAlign:'center',marginTop:16,fontSize:10,color:'#9CA3AF'}}>Stock deducts automatically when TCR is submitted</div>
+                  </>);
+                })()}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
