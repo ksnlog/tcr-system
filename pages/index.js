@@ -343,16 +343,17 @@ async function buildTechPDF(d, tok) {
 
   return (
     <>
-      <div className="tab-bar">
-        <button className={"tab-btn"+(mainTab==='tcr'?' act':'')} onClick={()=>setMainTab('tcr')}><span className="tab-icon">??</span>TCR</button>
-        <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}><span className="tab-icon">??</span>Master</button>
-        <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}><span className="tab-icon">??</span>My Stock</button>
-      </div>
       <Head>
         <title>TCR - GENERAL HVAC</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
       </Head>
+      <div className="tab-bar">
+        <button className={"tab-btn"+(mainTab==='tcr'?' act':'')} onClick={()=>setMainTab('tcr')}><span className="tab-icon">??</span>TCR</button>
+        <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}><span className="tab-icon">??</span>Master</button>
+        <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}><span className="tab-icon">??</span>My Stock</button>
+      </div>
+
 
       <style jsx global>{`
         *{box-sizing:border-box;margin:0;padding:0}
