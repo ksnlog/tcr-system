@@ -131,7 +131,8 @@ export default function App() {
       setTechs(json.techs||[]); setMaterials(json.materials||[]); setAllStock(json.allStock||{}); setEditMats(json.materials||[]);
     } catch(e) { setMasterMsg('Error loading data'); }
     setMasterLoading(false);
-  }async function techLogin() {
+  }
+  async function techLogin() {
     if (!myTechId.trim()) return setTechErr('Enter your Technician ID');
     setTechLoading(true); setTechErr('');
     try {
@@ -349,9 +350,9 @@ async function buildTechPDF(d, tok) {
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
       </Head>
       <div className="tab-bar">
-        <button className={"tab-btn"+(mainTab==='tcr'?' act':'')} onClick={()=>setMainTab('tcr')}><span className="tab-icon">??</span>TCR</button>
-        <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}><span className="tab-icon">??</span>Master</button>
-        <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}><span className="tab-icon">??</span>My Stock</button>
+        <button className={"tab-btn"+(mainTab==='tcr'?' act':'')} onClick={()=>setMainTab('tcr')}><span className="tab-icon">📋</span>TCR</button>
+        <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}><span className="tab-icon">📦</span>Master</button>
+        <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}><span className="tab-icon">🔧</span>My Stock</button>
       </div>
 
 
