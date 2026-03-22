@@ -113,6 +113,7 @@ export default function ConfirmPage() {
     doc.text(doc.splitTextToSize(conf,82),M+90,y+10);
     y+=36;
     if (locationData && locationData.lat) {
+      if (y > 240) { doc.addPage(); y = 20; }
       sH('Customer Location - GPS Verified',[37,99,235]);
       doc.setFillColor(239,246,255); doc.setDrawColor(147,197,253); doc.rect(M,y,W-M*2,20,'FD');
       doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(30,58,138);
