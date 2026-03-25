@@ -101,7 +101,7 @@ export default function App() {
     const ton = f.tonnage; let sub = 0;
     addItems.forEach(it => {
       if (isDisabled(it, ton)) return;
-      const rate = (it.no === "4" && (ton==="2.0+"||ton==="2.0")) ? 1200 : it.rate;
+      const rate = effectiveRate(it);
       sub += rate * (parseFloat(it.qty)||0);
     });
     actItems.forEach(it => { const qty=parseFloat(it.actual)||0; sub += it.rate>0 ? qty*it.rate : qty; });
