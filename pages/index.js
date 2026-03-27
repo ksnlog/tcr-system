@@ -98,6 +98,7 @@ export default function App() {
     });
   }, [f.unitCount]);
   useEffect(() => { if(masterAuthed) loadMasterAll(); }, [masterAuthed]);
+  useEffect(() => { if(screen === "pending" && waLink) { window.open(waLink, "_blank"); } }, [screen, waLink]);
   useEffect(() => () => { clearInterval(pollRef.current); clearInterval(timerRef.current); }, []);
 
   // TCR Functions
@@ -695,7 +696,8 @@ export default function App() {
                     <div style={{background:'#DCF8C6',border:'1px solid #25D366',borderRadius:11,padding:'14px 16px',marginBottom:8,textAlign:'center'}}>
                       <div style={{fontSize:22,marginBottom:4}}>📲</div>
                       <div style={{fontSize:13,fontWeight:700,color:'#166534'}}>Link sent to customer&apos;s WhatsApp</div>
-                      <div style={{fontSize:11,color:'#166534',marginTop:3}}>Ask the customer to open the link and confirm on their own device.</div>
+                      <div style={{fontSize:11,color:'#166534',marginTop:3,marginBottom:10}}>Ask the customer to open the link and confirm on their own device.</div>
+                      <button onClick={()=>window.open(waLink,"_blank")} style={{padding:'8px 20px',background:'#25D366',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>↺ Resend to Customer</button>
                     </div>
                     <p style={{fontSize:10.5,color:"var(--muted)",marginBottom:12}} className="polling-dots">Waiting for customer approval</p>
                     <button className="back-btn" onClick={reset}>✕ Cancel &amp; Start New TCR</button>
