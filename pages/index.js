@@ -56,6 +56,7 @@ export default function App() {
   const [err, setErr] = useState("");
   const [remaining, setRemaining] = useState(1800);
   const [doneData, setDoneData] = useState(null);
+  const [gpsLocation, setGpsLocation] = useState(null);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
   const pdfBlobRef = useRef(null);
@@ -151,6 +152,17 @@ export default function App() {
     if (f.gstOn && f.gstNumber.length < 15) return setErr("Valid 15-char GST Number required");
     const { sub, gst, total } = calcTotals();
     const payload = { ...f, units, additionalItems: addItems.map(it => ({...it, rate: effectiveRate(it)})), actualItems: actItems, sub, gst, total };
+    let gpsCoords = null;
+    if (navigator.geolocation) {
+      gpsCoords = await new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(
+          p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }),
+          () => resolve(null),
+          { timeout: 5000, maximumAge: 60000 }
+        );
+      });
+    }
+    setGpsLocation(gpsCoords);
     setSubmitting(true);
     try {
       const res = await fetch("/api/submit", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
@@ -176,12 +188,12 @@ export default function App() {
         actItems.forEach(it => { const mid=actMap[it.desc]; if(mid&&it.actual>0) deductItems.push({materialId:mid,qty:parseFloat(it.actual)||0}); });
         if (deductItems.length>0 && f.techName) await fetch('/api/inventory/deduct',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({techId:f.techName,items:deductItems,jobNo:f.callNo})});
       } catch(e) { console.log('Deduct error:',e); }
-      setRemaining(1800); startPolling(json.token);
+      setRemaining(1800); startPolling(json.token, gpsCoords);
     } catch(e) { setErr("Network error. Check connection."); }
     setSubmitting(false);
   }
 
-  function startPolling(tok) {
+  function startPolling(tok, gpsCoords) {
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch("/api/status?token="+tok);
@@ -189,7 +201,7 @@ export default function App() {
         if (json.status === "confirmed") {
           clearInterval(pollRef.current); clearInterval(timerRef.current);
           setDoneData(json.fullData); setScreen("done");
-          buildTechPDF(json.fullData, tok);
+          buildTechPDF(json.fullData, tok, gpsCoords);
         }
         if (json.status === "expired") { clearInterval(pollRef.current); clearInterval(timerRef.current); setScreen("form"); setErr("Confirmation link expired. Please resubmit."); }
         if (json.remaining !== undefined) setRemaining(json.remaining);
@@ -198,7 +210,7 @@ export default function App() {
     timerRef.current = setInterval(() => { setRemaining(r => { if (r <= 1) { clearInterval(timerRef.current); return 0; } return r - 1; }); }, 1000);
   }
 
-  async function buildTechPDF(d, tok) {
+  async function buildTechPDF(d, tok, gpsCoords) {
     try {
       const { jsPDF } = await import('jspdf');
       await import('jspdf-autotable');
@@ -229,6 +241,18 @@ export default function App() {
         doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30); doc.text(String(v||'--'),cx,cy+5);
       });
       y+=32;
+      if (gpsCoords) {
+        const mapsUrl = 'https://maps.google.com/?q='+gpsCoords.lat+','+gpsCoords.lng;
+        doc.setFillColor(239,246,255); doc.setDrawColor(147,197,253); doc.rect(M,y,W-M*2,11,'FD');
+        doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(29,78,216);
+        doc.text('GPS LOCATION:', M+3, y+7);
+        doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
+        doc.text(gpsCoords.lat.toFixed(6)+', '+gpsCoords.lng.toFixed(6)+'  (Acc: +/-'+Math.round(gpsCoords.acc)+'m)', M+32, y+7);
+        doc.setTextColor(37,99,235);
+        doc.text('[View on Google Maps]', W-M-42, y+7);
+        doc.link(W-M-42, y+2, 42, 7, {url: mapsUrl});
+        y += 15;
+      }
       sH('Installation Charges',[40,40,40]);
       const rows=[['1','Standard Installation (Free)','--','--','Rs.0']];
       (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/Ft',i.qty+' Ft','Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
@@ -668,11 +692,11 @@ export default function App() {
                     <div className="pmsg">A secure confirmation link has been sent to the customer&apos;s WhatsApp.<br/><strong>Do not touch the customer&apos;s phone.</strong><br/>The customer must confirm on their own device.</div>
                     <div className="timer">⏱ Expires in {fmtTime(remaining)}</div>
                     <div className="info-card"><strong>🔒 Security Note:</strong><br/>This form is now locked. The confirmation link is unique and one-time.</div>
-                    <button className="wa-btn" onClick={()=>window.open(waLink,"_blank")}>
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                      Open WhatsApp → Send to Customer
-                    </button>
-                    <button className="wa-btn-sm" onClick={()=>window.open(waLink,"_blank")}>Resend Link</button>
+                    <div style={{background:'#DCF8C6',border:'1px solid #25D366',borderRadius:11,padding:'14px 16px',marginBottom:8,textAlign:'center'}}>
+                      <div style={{fontSize:22,marginBottom:4}}>📲</div>
+                      <div style={{fontSize:13,fontWeight:700,color:'#166534'}}>Link sent to customer&apos;s WhatsApp</div>
+                      <div style={{fontSize:11,color:'#166534',marginTop:3}}>Ask the customer to open the link and confirm on their own device.</div>
+                    </div>
                     <p style={{fontSize:10.5,color:"var(--muted)",marginBottom:12}} className="polling-dots">Waiting for customer approval</p>
                     <button className="back-btn" onClick={reset}>✕ Cancel &amp; Start New TCR</button>
                   </div>
