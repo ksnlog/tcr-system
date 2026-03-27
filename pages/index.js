@@ -56,10 +56,10 @@ export default function App() {
   const [err, setErr] = useState("");
   const [remaining, setRemaining] = useState(1800);
   const [doneData, setDoneData] = useState(null);
-  const [gpsLocation, setGpsLocation] = useState(null);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
   const pdfBlobRef = useRef(null);
+  const gpsRef = useRef(null);
 
   // Master State
   const [masterAuthed, setMasterAuthed] = useState(false);
@@ -153,9 +153,9 @@ export default function App() {
     if (f.gstOn && f.gstNumber.length < 15) return setErr("Valid 15-char GST Number required");
     const { sub, gst, total } = calcTotals();
     const payload = { ...f, units, additionalItems: addItems.map(it => ({...it, rate: effectiveRate(it)})), actualItems: actItems, sub, gst, total };
-    let gpsCoords = null;
+    gpsRef.current = null;
     if (navigator.geolocation) {
-      gpsCoords = await new Promise(resolve => {
+      gpsRef.current = await new Promise(resolve => {
         navigator.geolocation.getCurrentPosition(
           p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }),
           () => resolve(null),
@@ -163,7 +163,6 @@ export default function App() {
         );
       });
     }
-    setGpsLocation(gpsCoords);
     setSubmitting(true);
     try {
       const res = await fetch("/api/submit", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
@@ -189,12 +188,12 @@ export default function App() {
         actItems.forEach(it => { const mid=actMap[it.desc]; if(mid&&it.actual>0) deductItems.push({materialId:mid,qty:parseFloat(it.actual)||0}); });
         if (deductItems.length>0 && f.techName) await fetch('/api/inventory/deduct',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({techId:f.techName,items:deductItems,jobNo:f.callNo})});
       } catch(e) { console.log('Deduct error:',e); }
-      setRemaining(1800); startPolling(json.token, gpsCoords);
+      setRemaining(1800); startPolling(json.token);
     } catch(e) { setErr("Network error. Check connection."); }
     setSubmitting(false);
   }
 
-  function startPolling(tok, gpsCoords) {
+  function startPolling(tok) {
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch("/api/status?token="+tok);
@@ -202,7 +201,7 @@ export default function App() {
         if (json.status === "confirmed") {
           clearInterval(pollRef.current); clearInterval(timerRef.current);
           setDoneData(json.fullData); setScreen("done");
-          buildTechPDF(json.fullData, tok, gpsCoords);
+          buildTechPDF(json.fullData, tok);
         }
         if (json.status === "expired") { clearInterval(pollRef.current); clearInterval(timerRef.current); setScreen("form"); setErr("Confirmation link expired. Please resubmit."); }
         if (json.remaining !== undefined) setRemaining(json.remaining);
@@ -211,10 +210,12 @@ export default function App() {
     timerRef.current = setInterval(() => { setRemaining(r => { if (r <= 1) { clearInterval(timerRef.current); return 0; } return r - 1; }); }, 1000);
   }
 
-  async function buildTechPDF(d, tok, gpsCoords) {
+  async function buildTechPDF(d, tok) {
     try {
       const { jsPDF } = await import('jspdf');
       await import('jspdf-autotable');
+      const doc = new jsPDF({ unit:'mm', format:'a4', compress:true });
+      const gpsCoords = gpsRef.current;
       const doc = new jsPDF({ unit:'mm', format:'a4', compress:true });
       const W=210, M=14; let y=0;
       doc.setFillColor(232,0,29); doc.rect(0,0,W,30,'F');
@@ -242,16 +243,21 @@ export default function App() {
         doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30); doc.text(String(v||'--'),cx,cy+5);
       });
       y+=32;
-      if (gpsCoords) {
-        const mapsUrl = 'https://maps.google.com/?q='+gpsCoords.lat+','+gpsCoords.lng;
+      {
+        const mapsUrl = gpsCoords ? 'https://maps.google.com/?q='+gpsCoords.lat+','+gpsCoords.lng : null;
         doc.setFillColor(239,246,255); doc.setDrawColor(147,197,253); doc.rect(M,y,W-M*2,11,'FD');
         doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(29,78,216);
         doc.text('GPS LOCATION:', M+3, y+7);
         doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
-        doc.text(gpsCoords.lat.toFixed(6)+', '+gpsCoords.lng.toFixed(6)+'  (Acc: +/-'+Math.round(gpsCoords.acc)+'m)', M+32, y+7);
-        doc.setTextColor(37,99,235);
-        doc.text('[View on Google Maps]', W-M-42, y+7);
-        doc.link(W-M-42, y+2, 42, 7, {url: mapsUrl});
+        if (gpsCoords) {
+          doc.text(gpsCoords.lat.toFixed(6)+', '+gpsCoords.lng.toFixed(6)+'  (Acc: +/-'+Math.round(gpsCoords.acc)+'m)', M+32, y+7);
+          doc.setTextColor(37,99,235);
+          doc.text('[View on Maps]', W-M-30, y+7);
+          doc.link(W-M-30, y+2, 30, 7, {url: mapsUrl});
+        } else {
+          doc.setTextColor(150,150,150);
+          doc.text('Location not available (permission denied or GPS unavailable)', M+32, y+7);
+        }
         y += 15;
       }
       sH('Installation Charges',[40,40,40]);
@@ -297,7 +303,7 @@ export default function App() {
     setScreen("form");
     setF({custName:"",mobile:"",callNo:"",serviceDate:"",techName:"",ssdName:"",address:"",tonnage:"",unitCount:1,gstOn:false,gstNumber:""});
     setUnits([{model:"",serial:"",pipeSize:""}]); setAddItems(additionalItems()); setActItems(actualItems()); setActSelected([]);
-    setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800); pdfBlobRef.current=null; setCustStand(false);
+    setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800); pdfBlobRef.current=null; gpsRef.current=null; setCustStand(false);
   }
 
   const { sub, gst, total } = calcTotals();
