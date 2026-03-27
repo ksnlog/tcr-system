@@ -12,6 +12,7 @@ const additionalItems = () => [
 const actCatalog = [
   {desc:"Wall Chiseling / Chipping",          unit:"Ft",   rate:0},
   {desc:"Beam / Concrete Wall Core Drilling", unit:"No.",  rate:0},
+  {desc:"Nitrogen flushing",                  unit:"Unit", rate:600},
   {desc:"Miscellaneous (Please specify)",     unit:"No.",  rate:0},
   {desc:"Wrapping Tape",                      unit:"Ft",   rate:24},
   {desc:"Rubber Pad",                         unit:"Unit", rate:200},
@@ -46,6 +47,8 @@ export default function App() {
   const [actItems, setActItems] = useState(actualItems());
   const [actSelected, setActSelected] = useState([]);
   const [custStand, setCustStand] = useState(false);
+  const [custMaterials, setCustMaterials] = useState(false);
+  const [miscDesc, setMiscDesc] = useState('');
   const [screen, setScreen] = useState("form");
   const [token, setToken] = useState("");
   const [waLink, setWaLink] = useState("");
@@ -104,7 +107,12 @@ export default function App() {
       const rate = effectiveRate(it);
       sub += rate * (parseFloat(it.qty)||0);
     });
-    actItems.forEach(it => { const qty=parseFloat(it.actual)||0; sub += it.rate>0 ? qty*it.rate : qty; });
+    actItems.forEach(it => { 
+      let rate = it.rate;
+      if (custMaterials && it.desc === "Wrapping Tape") rate = 10;
+      const qty=parseFloat(it.actual)||0; 
+      sub += rate>0 ? qty*rate : qty; 
+    });
     const gst = f.gstOn ? Math.round(sub * 0.18) : 0;
     return { sub, gst, total: sub + gst };
   }
@@ -120,6 +128,11 @@ export default function App() {
     if (it.no==="4") {
       if (custStand) return 250;
       return (f.tonnage==="2.0+"||f.tonnage==="2.0") ? 1200 : 750;
+    }
+    if (custMaterials) {
+      if (it.no==="2.1" || it.no==="2.2") return 70;
+      if (it.no==="3") return 10;
+      if (it.no==="5") return 10;
     }
     return it.rate;
   }
@@ -542,6 +555,14 @@ export default function App() {
                       </label>
                       <span style={{fontSize:12,fontWeight:500,color:'#92400E'}}>Customer supplies ODU Stand <strong>(Fixing only @ ₹250)</strong></span>
                     </div>
+                    <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:9,marginBottom:10}}>
+                      <label style={{position:'relative',display:'inline-block',width:38,height:22,flexShrink:0}}>
+                        <input type="checkbox" checked={custMaterials} onChange={e=>setCustMaterials(e.target.checked)} style={{opacity:0,width:0,height:0}}/>
+                        <span style={{position:'absolute',inset:0,background:custMaterials?'#16A34A':'#9CA3AF',borderRadius:11,cursor:'pointer',transition:'.2s'}}></span>
+                        <span style={{position:'absolute',height:16,width:16,left:custMaterials?19:3,bottom:3,background:'white',borderRadius:'50%',transition:'.2s'}}></span>
+                      </label>
+                      <span style={{fontSize:12,fontWeight:500,color:'#9A3412'}}>Customer supplies all materials <strong>(Laying charges only)</strong></span>
+                    </div>
                     <table className="ct" style={{marginBottom:10}}>
                       <thead><tr><th>#</th><th>Description</th><th style={{textAlign:"center"}}>Rate</th><th style={{textAlign:"center"}}>Qty (Ft)</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
                       <tbody>
@@ -552,12 +573,14 @@ export default function App() {
                         </tr>
                         {addItems.map((it,i) => {
                           const dis = isDisabled(it, f.tonnage); const rate = effectiveRate(it); const amt = rate * (parseFloat(it.qty)||0);
+                          const isCustMat = custMaterials && (it.no==="2.1" || it.no==="2.2" || it.no==="3" || it.no==="5");
                           return (
                             <tr key={it.no} className={dis?"disabled":""}>
                               <td className="no">{it.no}</td><td className="dc">{it.desc}</td>
                               <td style={{textAlign:"center",fontFamily:"DM Mono,monospace",fontSize:10}}>
                                 ₹{rate}/{it.unit}
                                 {it.no==="4"&&(f.tonnage==="2.0+"||f.tonnage==="2.0")&&<span style={{fontSize:9,background:"#FEF3C7",color:"#92400E",padding:"0 4px",borderRadius:4,marginLeft:3}}>2T+</span>}
+                                {isCustMat&&<span style={{fontSize:9,background:"#DBEAFE",color:"#1E40AF",padding:"0 4px",borderRadius:4,marginLeft:3}}>Laying</span>}
                               </td>
                               <td style={{textAlign:"center"}}><input type="number" min="0" value={it.qty||""} disabled={dis} onChange={e=>updateAddItem(i,"qty",parseFloat(e.target.value)||0)} placeholder="0"/></td>
                               <td className="ra">{amt>0?`₹${fmtINR(amt)}`:"—"}</td>
@@ -585,12 +608,33 @@ export default function App() {
                         <thead><tr><th>#</th><th>Description</th><th style={{textAlign:"center"}}>Qty</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
                         <tbody>
                           {actItems.map((it,i)=>(
-                            <tr key={i}>
-                              <td className="no">{it.no}</td>
-                              <td className="dc">{it.desc}{it.rate>0?<small>Rs.{it.rate}/{it.unit}</small>:null}</td>
-                              <td style={{textAlign:"center"}}><input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:60}}/></td>
-                              <td className="ra">{it.actual>0?(it.rate>0?"Rs."+String((it.actual*it.rate).toLocaleString("en-IN")):"Rs."+String(Number(it.actual).toLocaleString("en-IN"))):"—"}</td>
-                            </tr>
+                            <>
+                              <tr key={i}>
+                                <td className="no">{it.no}</td>
+                                <td className="dc">
+                                  {it.desc}
+                                  {custMaterials && it.desc === "Wrapping Tape" ? <small> Rs.10/Ft</small> : (it.rate>0?<small> Rs.{it.rate}/{it.unit}</small>:null)}
+                                </td>
+                                <td style={{textAlign:"center"}}><input type="number" min="0" value={it.actual||""} onChange={e=>updateActItem(i,e.target.value)} placeholder="0" style={{width:60}}/></td>
+                                <td className="ra">{it.actual>0?(
+                                  (custMaterials && it.desc === "Wrapping Tape") ? "Rs."+String((it.actual*10).toLocaleString("en-IN")) :
+                                  (it.rate>0?"Rs."+String((it.actual*it.rate).toLocaleString("en-IN")):"Rs."+String(Number(it.actual).toLocaleString("en-IN")))
+                                ):"—"}</td>
+                              </tr>
+                              {it.desc === "Miscellaneous (Please specify)" && (
+                                <tr key={i+"_misc"}>
+                                  <td colSpan="4" style={{padding:'6px 8px',background:'#FEFCE8'}}>
+                                    <input 
+                                      type="text" 
+                                      value={miscDesc} 
+                                      onChange={e=>setMiscDesc(e.target.value)} 
+                                      placeholder="Specify the work/item..." 
+                                      style={{width:'100%',padding:'6px 8px',border:'1.5px solid #FDE047',borderRadius:6,fontSize:11,outline:'none'}}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                            </>
                           ))}
                         </tbody>
                       </table>
