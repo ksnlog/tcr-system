@@ -112,6 +112,17 @@ export default function ConfirmPage() {
     const conf='I, '+d.custName+', confirm I reviewed all charges and approve payment of Rs.'+Number(d.total).toLocaleString('en-IN')+' for installation work. Confirmed on my own device.';
     doc.text(doc.splitTextToSize(conf,82),M+90,y+10);
     y+=36;
+    if (locationData && locationData.lat) {
+      if (y > 240) { doc.addPage(); y = 20; }
+      sH('Customer Location - GPS Verified',[37,99,235]);
+      doc.setFillColor(239,246,255); doc.setDrawColor(147,197,253); doc.rect(M,y,W-M*2,20,'FD');
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(30,58,138);
+      doc.text('Lat: '+locationData.lat.toFixed(6)+', Lng: '+locationData.lng.toFixed(6), M+3, y+7);
+      doc.text('Accuracy: ±'+locationData.accuracy+' meters', M+3, y+13);
+      doc.setFont('helvetica','bold');
+      doc.text('Maps: '+locationData.mapsLink, M+3, y+19);
+      y+=24;
+    }
     doc.setFillColor(30,30,30); doc.rect(0,287,W,10,'F');
     doc.setTextColor(160,160,160); doc.setFont('helvetica','normal'); doc.setFontSize(7);
     doc.text('GENERAL HVAC Solutions India Pvt Ltd  ·  Approved TCR  ·  Job: '+d.callNo, W/2, 293, {align:'center'});
