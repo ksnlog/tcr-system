@@ -214,7 +214,6 @@ export default function App() {
     try {
       const { jsPDF } = await import('jspdf');
       await import('jspdf-autotable');
-      const doc = new jsPDF({ unit:'mm', format:'a4', compress:true });
       const gpsCoords = gpsRef.current;
       const doc = new jsPDF({ unit:'mm', format:'a4', compress:true });
       const W=210, M=14; let y=0;
@@ -243,23 +242,6 @@ export default function App() {
         doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30); doc.text(String(v||'--'),cx,cy+5);
       });
       y+=32;
-      {
-        const mapsUrl = gpsCoords ? 'https://maps.google.com/?q='+gpsCoords.lat+','+gpsCoords.lng : null;
-        doc.setFillColor(239,246,255); doc.setDrawColor(147,197,253); doc.rect(M,y,W-M*2,11,'FD');
-        doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(29,78,216);
-        doc.text('GPS LOCATION:', M+3, y+7);
-        doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
-        if (gpsCoords) {
-          doc.text(gpsCoords.lat.toFixed(6)+', '+gpsCoords.lng.toFixed(6)+'  (Acc: +/-'+Math.round(gpsCoords.acc)+'m)', M+32, y+7);
-          doc.setTextColor(37,99,235);
-          doc.text('[View on Maps]', W-M-30, y+7);
-          doc.link(W-M-30, y+2, 30, 7, {url: mapsUrl});
-        } else {
-          doc.setTextColor(150,150,150);
-          doc.text('Location not available (permission denied or GPS unavailable)', M+32, y+7);
-        }
-        y += 15;
-      }
       sH('Installation Charges',[40,40,40]);
       const rows=[['1','Standard Installation (Free)','--','--','Rs.0']];
       (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/Ft',i.qty+' Ft','Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
@@ -283,6 +265,25 @@ export default function App() {
       doc.text('Confirmed at: '+new Date().toLocaleString('en-IN'), M+3, y+23);
       doc.text('Token Ref: '+String(tok).slice(0,16)+'...', M+3, y+29);
       y+=36;
+      {
+        const mapsUrl = gpsCoords ? 'https://maps.google.com/?q='+gpsCoords.lat+','+gpsCoords.lng : null;
+        if (y > 245) { doc.addPage(); y = 20; }
+        sH('Technician GPS Location',[29,78,216]);
+        doc.setFillColor(239,246,255); doc.setDrawColor(147,197,253); doc.rect(M,y,W-M*2,11,'FD');
+        doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(29,78,216);
+        doc.text('GPS LOCATION:', M+3, y+7);
+        doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
+        if (gpsCoords) {
+          doc.text(gpsCoords.lat.toFixed(6)+', '+gpsCoords.lng.toFixed(6)+'  (Acc: +/-'+Math.round(gpsCoords.acc)+'m)', M+32, y+7);
+          doc.setTextColor(37,99,235);
+          doc.text('[View on Maps]', W-M-30, y+7);
+          doc.link(W-M-30, y+2, 30, 7, {url: mapsUrl});
+        } else {
+          doc.setTextColor(150,150,150);
+          doc.text('Location not available (permission denied or GPS unavailable)', M+32, y+7);
+        }
+        y += 15;
+      }
       doc.setFillColor(30,30,30); doc.rect(0,287,W,10,'F');
       doc.setTextColor(160,160,160); doc.setFont('helvetica','normal'); doc.setFontSize(7);
       doc.text('GENERAL HVAC Solutions India Pvt Ltd  |  Approved TCR  |  Job: '+d.callNo, W/2, 293, {align:'center'});
