@@ -1016,7 +1016,10 @@ export default function App() {
       )}
 
       {/* ══════════════════════════════════════════════════════ MASTER TAB ═══ */}
-      {!masterAuthed ? (
+      {mainTab==='master' && (
+        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
+          <div style={{maxWidth:720,margin:'0 auto'}}>
+            {!masterAuthed ? (
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
                 <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:380,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
                   <div style={{fontSize:36,marginBottom:12}}>📦</div>
@@ -1324,6 +1327,7 @@ export default function App() {
             )}
           </div>
         </div>
+      )}
       )}
 
       {/* ══════════════════════════════════════════════════ MY STOCK TAB ═══ */}
