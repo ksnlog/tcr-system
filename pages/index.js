@@ -449,7 +449,7 @@ export default function App() {
   async function loadMasterAll() {
     setMasterLoading(true);
     try {
-      const res = await fetch('/api/inventory/stock?password='+'''Project@1''');
+      const res = await fetch('/api/inventory/stock?password='+'Project@1');
       const json = await res.json();
       setTechs(json.techs||[]); setMaterials(json.materials||[]); setAllStock(json.allStock||{}); setEditMats(json.materials||[]);
     } catch(e) { setMasterMsg('Error loading data'); }
@@ -457,24 +457,24 @@ export default function App() {
   }
   async function addTechnician() {
     if (!newTechId||!newTechName) return setMasterMsg('Fill both ID and Name');
-    const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:''Project@1'',action:'add',techId:newTechId.toUpperCase(),techName:newTechName})});
+    const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'Project@1',action:'add',techId:newTechId.toUpperCase(),techName:newTechName})});
     const json = await res.json(); if (json.error) return setMasterMsg(json.error);
     setTechs(json.techs); setNewTechId(''); setNewTechName(''); setMasterMsg('Technician added to stock!'); setTimeout(()=>setMasterMsg(''),3000);
   }
   async function removeTechnician(tid) {
     if (!confirm('Remove '+tid+' from stock tracking?')) return;
-    const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:''Project@1'',action:'remove',techId:tid})});
+    const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'Project@1',action:'remove',techId:tid})});
     const json = await res.json(); setTechs(json.techs); setMasterMsg('Removed'); setTimeout(()=>setMasterMsg(''),3000);
   }
   async function addStockSubmit() {
     if (!selTech||!selMat||!addQty) return setMasterMsg('Fill all fields');
-    const res = await fetch('/api/inventory/stock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:''Project@1'',techId:selTech,materialId:selMat,qty:addQty,costPrice:addCost})});
+    const res = await fetch('/api/inventory/stock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'Project@1',techId:selTech,materialId:selMat,qty:addQty,costPrice:addCost})});
     const json = await res.json(); if (json.error) return setMasterMsg(json.error);
-    const r2 = await fetch('/api/inventory/stock?password='+''Project@1''); const j2 = await r2.json(); setAllStock(j2.allStock||{});
+    const r2 = await fetch('/api/inventory/stock?password='+'Project@1'); const j2 = await r2.json(); setAllStock(j2.allStock||{});
     setSelTech(''); setSelMat(''); setAddQty(''); setAddCost(''); setMasterMsg('Stock added!'); setTimeout(()=>setMasterMsg(''),3000);
   }
   async function saveMaterialPrices() {
-    const res = await fetch('/api/inventory/materials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:''Project@1'',materials:editMats})});
+    const res = await fetch('/api/inventory/materials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'Project@1',materials:editMats})});
     const json = await res.json(); if (json.error) return setMasterMsg(json.error);
     setMaterials(editMats); setMasterMsg('Prices saved!'); setTimeout(()=>setMasterMsg(''),3000);
   }
@@ -518,7 +518,7 @@ export default function App() {
   async function loadSfs() {
     setSfLoading(true);
     try {
-      const res = await fetch('/api/admin/sfs?password=' + ''Project@1'');
+      const res = await fetch('/api/admin/sfs?password=' + 'Project@1');
       const json = await res.json();
       setSfs(json.sfs || []);
     } catch(e) { setMasterMsg('Error loading service centres'); }
@@ -529,7 +529,7 @@ export default function App() {
     if (!newSfId.trim() || !newSfName.trim() || !newSfPwd.trim()) return setMasterMsg('Fill SF ID, Name and Password');
     const res = await fetch('/api/admin/sfs', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ password: ''Project@1'', action: 'createSf', sfId: newSfId.trim().toUpperCase(), sfName: newSfName.trim(), sfPassword: newSfPwd.trim() })
+      body: JSON.stringify({ password: 'Project@1', action: 'createSf', sfId: newSfId.trim().toUpperCase(), sfName: newSfName.trim(), sfPassword: newSfPwd.trim() })
     });
     const json = await res.json();
     if (json.error) return setMasterMsg(json.error);
@@ -541,7 +541,7 @@ export default function App() {
     if (!confirm('Remove SF ' + sfId + ' and ALL its technician accounts?')) return;
     const res = await fetch('/api/admin/sfs', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ password: ''Project@1'', action: 'removeSf', sfId })
+      body: JSON.stringify({ password: 'Project@1', action: 'removeSf', sfId })
     });
     const json = await res.json();
     setSfs(json.sfs); setMasterMsg('SF removed'); setTimeout(() => setMasterMsg(''), 3000);
@@ -553,7 +553,7 @@ export default function App() {
     const res = await fetch('/api/admin/sfs', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        password: ''Project@1'', action: 'addTech',
+        password: 'Project@1', action: 'addTech',
         sfId: selSfForTech,
         techId: newSfTechId.trim().toUpperCase(),
         techName: newSfTechName.trim(),
@@ -573,7 +573,7 @@ export default function App() {
     if (!confirm('Remove technician ' + techId + ' from ' + sfId + '?')) return;
     const res = await fetch('/api/admin/sfs', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ password: ''Project@1'', action: 'removeTech', sfId, techId })
+      body: JSON.stringify({ password: 'Project@1', action: 'removeTech', sfId, techId })
     });
     const json = await res.json();
     setSfs(json.sfs); setMasterMsg('Technician removed'); setTimeout(() => setMasterMsg(''), 3000);
