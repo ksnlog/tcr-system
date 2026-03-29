@@ -33,10 +33,13 @@ const fmtINR = n => Number(n||0).toLocaleString('en-IN');
 export default function App() {
   const [mainTab, setMainTab] = useState('tcr');
 
-  // TCR State
+  // ── TCR State ──────────────────────────────────────────────────────────────
   const [authed, setAuthed] = useState(false);
+  const [sessionTech, setSessionTech] = useState(null); // {techId, techName, sfId, sfName}
+  const [techIdInput, setTechIdInput] = useState('');
   const [pwdInput, setPwdInput] = useState('');
   const [pwdErr, setPwdErr] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
   const [f, setF] = useState({
     custName:"", mobile:"", callNo:"", serviceDate:"", techName:"", ssdName:"",
     address:"", tonnage:"", unitCount:1, gstOn:false, gstNumber:""
@@ -61,11 +64,11 @@ export default function App() {
   const pdfBlobRef = useRef(null);
   const gpsRef = useRef(null);
 
-  // Master State
+  // ── Master State ───────────────────────────────────────────────────────────
   const [masterAuthed, setMasterAuthed] = useState(false);
   const [masterPwd, setMasterPwd] = useState('');
   const [masterPwdErr, setMasterPwdErr] = useState('');
-  const [masterTab, setMasterTab] = useState('stock');
+  const [masterTab, setMasterTab] = useState('sfs');
   const [techs, setTechs] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [allStock, setAllStock] = useState({});
@@ -79,7 +82,19 @@ export default function App() {
   const [addCost, setAddCost] = useState('');
   const [editMats, setEditMats] = useState([]);
 
-  // Tech State
+  // ── SF Management State (Master) ──────────────────────────────────────────
+  const [sfs, setSfs] = useState([]);
+  const [sfLoading, setSfLoading] = useState(false);
+  const [newSfId, setNewSfId] = useState('');
+  const [newSfName, setNewSfName] = useState('');
+  const [newSfPwd, setNewSfPwd] = useState('');
+  const [selSfForTech, setSelSfForTech] = useState('');
+  const [newSfTechId, setNewSfTechId] = useState('');
+  const [newSfTechName, setNewSfTechName] = useState('');
+  const [newSfTechPwd, setNewSfTechPwd] = useState('');
+  const [expandedSf, setExpandedSf] = useState(null);
+
+  // ── Tech (My Stock) State ─────────────────────────────────────────────────
   const [myTechId, setMyTechId] = useState('');
   const [techAuthed, setTechAuthed] = useState(false);
   const [techData, setTechData] = useState(null);
@@ -88,7 +103,15 @@ export default function App() {
 
   const field = (k, v) => setF(p => ({...p, [k]: v}));
 
-  useEffect(() => { fetch('/api/inventory/technicians').then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setTechList(d); }); }, []);
+  // Fetch SF-scoped tech list after login
+  useEffect(() => {
+    if (sessionTech?.sfId) {
+      fetch('/api/inventory/technicians?sfId=' + sessionTech.sfId)
+        .then(r => r.json())
+        .then(d => { if (Array.isArray(d)) setTechList(d); });
+    }
+  }, [sessionTech]);
+
   useEffect(() => {
     const n = parseInt(f.unitCount) || 1;
     setUnits(prev => {
@@ -97,11 +120,15 @@ export default function App() {
       return next.slice(0, n);
     });
   }, [f.unitCount]);
-  useEffect(() => { if(masterAuthed) loadMasterAll(); }, [masterAuthed]);
+
+  useEffect(() => {
+    if (masterAuthed) { loadMasterAll(); loadSfs(); }
+  }, [masterAuthed]);
+
   useEffect(() => { if(screen === "pending" && waLink) { window.open(waLink, "_blank"); } }, [screen, waLink]);
   useEffect(() => () => { clearInterval(pollRef.current); clearInterval(timerRef.current); }, []);
 
-  // TCR Functions
+  // ── TCR Functions ──────────────────────────────────────────────────────────
   function calcTotals() {
     const ton = f.tonnage; let sub = 0;
     addItems.forEach(it => {
@@ -109,15 +136,16 @@ export default function App() {
       const rate = effectiveRate(it);
       sub += rate * (parseFloat(it.qty)||0);
     });
-    actItems.forEach(it => { 
+    actItems.forEach(it => {
       let rate = it.rate;
       if (custMaterials && it.desc === "Wrapping Tape") rate = 10;
-      const qty=parseFloat(it.actual)||0; 
-      sub += rate>0 ? qty*rate : qty; 
+      const qty = parseFloat(it.actual)||0;
+      sub += rate>0 ? qty*rate : qty;
     });
     const gst = f.gstOn ? Math.round(sub * 0.18) : 0;
     return { sub, gst, total: sub + gst };
   }
+
   function isDisabled(it, ton) {
     if (it.group === "all") return false;
     if (!ton || ton==="mix" || ton==="window") return false;
@@ -126,6 +154,7 @@ export default function App() {
     if (it.group==="low"  &&  isHigh) return true;
     return false;
   }
+
   function effectiveRate(it) {
     if (it.no==="4") {
       if (custStand) return 250;
@@ -138,21 +167,48 @@ export default function App() {
     }
     return it.rate;
   }
+
   function updateAddItem(i, key, val) { setAddItems(prev => { const n=[...prev]; n[i]={...n[i],[key]:val}; return n; }); }
   function updateActItem(i, val) { setActItems(prev => { const n=[...prev]; n[i]={...n[i],actual:parseFloat(val)||0}; return n; }); }
   function updateUnit(i, key, val) { setUnits(prev => { const n=[...prev]; n[i]={...n[i],[key]:val}; return n; }); }
+
+  // NEW: Tech login via API
+  async function handleLogin() {
+    if (!techIdInput.trim() || !pwdInput) return setPwdErr('Enter Tech ID and Password');
+    setLoginLoading(true); setPwdErr('');
+    try {
+      const res = await fetch('/api/auth/tech', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ techId: techIdInput.trim().toUpperCase(), password: pwdInput })
+      });
+      const json = await res.json();
+      if (!res.ok) { setPwdErr(json.error || 'Invalid credentials'); setLoginLoading(false); return; }
+      setSessionTech(json); // {techId, techName, sfId, sfName}
+      setF(p => ({ ...p, techName: json.techId, ssdName: json.sfName }));
+      setAuthed(true);
+    } catch(e) { setPwdErr('Network error'); }
+    setLoginLoading(false);
+  }
 
   async function handleSubmit() {
     setErr("");
     if (!f.custName)                         return setErr("Customer Name required");
     if (!/^\d{10}$/.test(f.mobile))           return setErr("Valid 10-digit mobile required");
-    if (!f.callNo)                           return setErr("Call / Job No. required");
-    if (!f.serviceDate)                      return setErr("Service Date required");
-    if (!f.techName)                         return setErr("Technician Name required");
-    if (!f.tonnage)                          return setErr("Please select AC Tonnage");
-    if (f.gstOn && f.gstNumber.length < 15) return setErr("Valid 15-char GST Number required");
+    if (!f.callNo)                            return setErr("Call / Job No. required");
+    if (!f.serviceDate)                       return setErr("Service Date required");
+    if (!f.techName)                          return setErr("Technician Name required");
+    if (!f.tonnage)                           return setErr("Please select AC Tonnage");
+    if (f.gstOn && f.gstNumber.length < 15)  return setErr("Valid 15-char GST Number required");
     const { sub, gst, total } = calcTotals();
-    const payload = { ...f, units, additionalItems: addItems.map(it => ({...it, rate: effectiveRate(it)})), actualItems: actItems, sub, gst, total };
+    const payload = {
+      ...f,
+      sfId: sessionTech?.sfId,              // ← SF scope
+      units,
+      additionalItems: addItems.map(it => ({...it, rate: effectiveRate(it)})),
+      actualItems: actItems,
+      sub, gst, total
+    };
     gpsRef.current = null;
     if (navigator.geolocation) {
       gpsRef.current = await new Promise(resolve => {
@@ -303,9 +359,29 @@ export default function App() {
   function reset() {
     clearInterval(pollRef.current); clearInterval(timerRef.current);
     setScreen("form");
+    // Re-populate session fields so they stay locked after reset
+    setF({
+      custName:"", mobile:"", callNo:"", serviceDate:"",
+      techName: sessionTech?.techId || "",
+      ssdName: sessionTech?.sfName || "",
+      address:"", tonnage:"", unitCount:1, gstOn:false, gstNumber:""
+    });
+    setUnits([{model:"",serial:"",pipeSize:""}]);
+    setAddItems(additionalItems()); setActItems(actualItems()); setActSelected([]);
+    setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800);
+    pdfBlobRef.current=null; gpsRef.current=null;
+    setCustStand(false); setCustMaterials(false); setMiscDesc('');
+  }
+
+  function fullLogout() {
+    reset();
+    setAuthed(false);
+    setSessionTech(null);
+    setTechIdInput('');
+    setPwdInput('');
+    setPwdErr('');
+    setTechList([]);
     setF({custName:"",mobile:"",callNo:"",serviceDate:"",techName:"",ssdName:"",address:"",tonnage:"",unitCount:1,gstOn:false,gstNumber:""});
-    setUnits([{model:"",serial:"",pipeSize:""}]); setAddItems(additionalItems()); setActItems(actualItems()); setActSelected([]);
-    setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800); pdfBlobRef.current=null; gpsRef.current=null; setCustStand(false);
   }
 
   async function downloadExcel(records, filename) {
@@ -365,7 +441,7 @@ export default function App() {
 
   const { sub, gst, total } = calcTotals();
 
-  // Master Functions
+  // ── Master Functions ───────────────────────────────────────────────────────
   async function loadMasterAll() {
     setMasterLoading(true);
     try {
@@ -379,10 +455,10 @@ export default function App() {
     if (!newTechId||!newTechName) return setMasterMsg('Fill both ID and Name');
     const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:MASTER_PWD,action:'add',techId:newTechId.toUpperCase(),techName:newTechName})});
     const json = await res.json(); if (json.error) return setMasterMsg(json.error);
-    setTechs(json.techs); setNewTechId(''); setNewTechName(''); setMasterMsg('Technician added!'); setTimeout(()=>setMasterMsg(''),3000);
+    setTechs(json.techs); setNewTechId(''); setNewTechName(''); setMasterMsg('Technician added to stock!'); setTimeout(()=>setMasterMsg(''),3000);
   }
   async function removeTechnician(tid) {
-    if (!confirm('Remove '+tid+'?')) return;
+    if (!confirm('Remove '+tid+' from stock tracking?')) return;
     const res = await fetch('/api/inventory/technicians',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:MASTER_PWD,action:'remove',techId:tid})});
     const json = await res.json(); setTechs(json.techs); setMasterMsg('Removed'); setTimeout(()=>setMasterMsg(''),3000);
   }
@@ -400,7 +476,72 @@ export default function App() {
   }
   function getStockVal(tid) { const s=allStock[tid]||{}; let v=0; materials.forEach(m=>{v+=(s[m.id]||0)*m.costPrice;}); return v; }
 
-  // Tech Functions
+  // ── SF Management Functions ────────────────────────────────────────────────
+  async function loadSfs() {
+    setSfLoading(true);
+    try {
+      const res = await fetch('/api/admin/sfs?password=' + MASTER_PWD);
+      const json = await res.json();
+      setSfs(json.sfs || []);
+    } catch(e) { setMasterMsg('Error loading service centres'); }
+    setSfLoading(false);
+  }
+
+  async function createSf() {
+    if (!newSfId.trim() || !newSfName.trim() || !newSfPwd.trim()) return setMasterMsg('Fill SF ID, Name and Password');
+    const res = await fetch('/api/admin/sfs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: MASTER_PWD, action: 'createSf', sfId: newSfId.trim().toUpperCase(), sfName: newSfName.trim(), sfPassword: newSfPwd.trim() })
+    });
+    const json = await res.json();
+    if (json.error) return setMasterMsg(json.error);
+    setSfs(json.sfs); setNewSfId(''); setNewSfName(''); setNewSfPwd('');
+    setMasterMsg('Service Centre created!'); setTimeout(() => setMasterMsg(''), 3000);
+  }
+
+  async function removeSf(sfId) {
+    if (!confirm('Remove SF ' + sfId + ' and ALL its technician accounts?')) return;
+    const res = await fetch('/api/admin/sfs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: MASTER_PWD, action: 'removeSf', sfId })
+    });
+    const json = await res.json();
+    setSfs(json.sfs); setMasterMsg('SF removed'); setTimeout(() => setMasterMsg(''), 3000);
+  }
+
+  async function addTechToSf() {
+    if (!selSfForTech || !newSfTechId.trim() || !newSfTechName.trim() || !newSfTechPwd.trim())
+      return setMasterMsg('Fill all technician fields');
+    const res = await fetch('/api/admin/sfs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        password: MASTER_PWD, action: 'addTech',
+        sfId: selSfForTech,
+        techId: newSfTechId.trim().toUpperCase(),
+        techName: newSfTechName.trim(),
+        techPassword: newSfTechPwd.trim()
+      })
+    });
+    const json = await res.json();
+    if (json.error) return setMasterMsg(json.error);
+    setSfs(json.sfs);
+    setNewSfTechId(''); setNewSfTechName(''); setNewSfTechPwd('');
+    // Refresh stock tech list too
+    loadMasterAll();
+    setMasterMsg('Technician added!'); setTimeout(() => setMasterMsg(''), 3000);
+  }
+
+  async function removeTechFromSf(sfId, techId) {
+    if (!confirm('Remove technician ' + techId + ' from ' + sfId + '?')) return;
+    const res = await fetch('/api/admin/sfs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: MASTER_PWD, action: 'removeTech', sfId, techId })
+    });
+    const json = await res.json();
+    setSfs(json.sfs); setMasterMsg('Technician removed'); setTimeout(() => setMasterMsg(''), 3000);
+  }
+
+  // ── Tech (My Stock) Functions ──────────────────────────────────────────────
   async function techLogin() {
     if (!myTechId.trim()) return setTechErr('Enter your Technician ID');
     setTechLoading(true); setTechErr('');
@@ -418,6 +559,7 @@ export default function App() {
     const json = await res.json(); setTechData(json); setTechLoading(false);
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <Head>
@@ -513,6 +655,7 @@ export default function App() {
         .ref-box{font-family:'DM Mono',monospace;font-size:11.5px;background:var(--light);padding:5px 12px;border-radius:8px;color:var(--dark);display:inline-block;margin:8px 0}
         .btn-new{width:100%;padding:12px;background:linear-gradient(135deg,#E8001D,#9B0013);color:white;border:none;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px}
         .btn-dl{width:100%;padding:12px;background:linear-gradient(135deg,#1D4ED8,#1E40AF);color:white;border:none;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:7px}
+        .locked-field{padding:8px 10px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;font-weight:500;display:flex;align-items:center;gap:5px}
         @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
@@ -529,7 +672,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* TCR TAB */}
+      {/* ═══════════════════════════════════════════════════════ TCR TAB ═══ */}
       {mainTab==='tcr' && (
         <div className="wrap">
           <div className="hdr">
@@ -537,29 +680,53 @@ export default function App() {
               <div>
                 <div className="hco">GENERAL HVAC Solutions India Pvt Ltd</div>
                 <div className="hsub">Authorized Service Partner - TCR cum Customer Confirmation</div>
-                <div className="hssd" id="ssdDisp">{f.ssdName ? `📍 ${f.ssdName}` : ""}</div>
+                <div className="hssd" id="ssdDisp">
+                  {sessionTech ? `📍 ${sessionTech.sfName}` : ""}
+                </div>
               </div>
+              {authed && (
+                <button onClick={fullLogout}
+                  style={{marginLeft:'auto',background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',color:'white',padding:'4px 10px',borderRadius:8,fontSize:10,cursor:'pointer',flexShrink:0,position:'relative',zIndex:1}}>
+                  Logout
+                </button>
+              )}
             </div>
           </div>
+
           <div className="wa-bubble">
             <div className="wa-inner">
               <div className="wa-msg">
+
+                {/* ─── Login Screen ─── */}
                 {!authed && (
                   <div style={{padding:"40px 20px",textAlign:"center"}}>
                     <div style={{fontSize:32,marginBottom:12}}>🔐</div>
                     <div style={{fontSize:16,fontWeight:700,marginBottom:6}}>Technician Login</div>
-                    <div style={{fontSize:12,color:"#6B7280",marginBottom:20}}>Enter password to access TCR form</div>
-                    <input type="password" value={pwdInput} onChange={e=>setPwdInput(e.target.value)}
-                      onKeyDown={e=>{if(e.key==='Enter'){if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}}
-                      placeholder="Enter password"
-                      style={{width:"100%",padding:"10px 14px",border:"1.5px solid #E5E7EB",borderRadius:10,fontSize:14,marginBottom:8,outline:"none",textAlign:"center",letterSpacing:2}}/>
+                    <div style={{fontSize:12,color:"#6B7280",marginBottom:20}}>Enter your Tech ID and password</div>
+                    <input
+                      value={techIdInput}
+                      onChange={e=>setTechIdInput(e.target.value.toUpperCase())}
+                      onKeyDown={e=>e.key==='Enter'&&handleLogin()}
+                      placeholder="Tech ID  (e.g. TECH001)"
+                      style={{width:"100%",padding:"10px 14px",border:"1.5px solid #E5E7EB",borderRadius:10,fontSize:13,marginBottom:8,outline:"none",textAlign:"center",letterSpacing:2,fontFamily:"monospace"}}
+                    />
+                    <input
+                      type="password"
+                      value={pwdInput}
+                      onChange={e=>setPwdInput(e.target.value)}
+                      onKeyDown={e=>e.key==='Enter'&&handleLogin()}
+                      placeholder="Password"
+                      style={{width:"100%",padding:"10px 14px",border:"1.5px solid #E5E7EB",borderRadius:10,fontSize:14,marginBottom:8,outline:"none",textAlign:"center",letterSpacing:2}}
+                    />
                     {pwdErr && <div style={{color:"#DC2626",fontSize:12,marginBottom:8}}>{pwdErr}</div>}
-                    <button onClick={()=>{if(pwdInput==='General@26'){setAuthed(true);setPwdErr('');}else{setPwdErr('Incorrect password');}}}
-                      style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#E8001D,#9B0013)",color:"white",border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer"}}>
-                      Login
+                    <button onClick={handleLogin} disabled={loginLoading}
+                      style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#E8001D,#9B0013)",color:"white",border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",opacity:loginLoading?.6:1}}>
+                      {loginLoading ? 'Verifying…' : 'Login'}
                     </button>
                   </div>
                 )}
+
+                {/* ─── TCR Form ─── */}
                 {authed && screen === "form" && <>
                   <div className="sec">
                     <div className="sec-h">
@@ -574,19 +741,27 @@ export default function App() {
                       <div className="field"><label>Call / Job No. *</label><input value={f.callNo} onChange={e=>field("callNo",e.target.value)} placeholder="e.g. KOL110126000001"/></div>
                       <div className="field"><label>Service Date</label><input type="date" value={f.serviceDate} onChange={e=>field("serviceDate",e.target.value)}/></div>
                     </div>
+                    {/* Technician & SF — locked from session */}
                     <div className="fg">
-                      <div className="field"><label>Technician *</label>
-                        <select value={f.techName} onChange={e=>field("techName",e.target.value)} style={{width:"100%",padding:"8px 10px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:12,outline:"none",background:"white"}}>
-                          <option value="">Select Technician...</option>
-                          {techList.map(t=><option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
-                        </select>
+                      <div className="field">
+                        <label>Technician</label>
+                        <div className="locked-field">
+                          🔧 <span style={{fontWeight:600}}>{sessionTech?.techName}</span>
+                          <span style={{fontSize:10,color:"#6B7280",fontFamily:"monospace",marginLeft:2}}>({sessionTech?.techId})</span>
+                        </div>
                       </div>
-                      <div className="field"><label>SSD / SF Name</label><input value={f.ssdName} onChange={e=>field("ssdName",e.target.value)} placeholder="SSD or SF name"/></div>
+                      <div className="field">
+                        <label>Service Centre</label>
+                        <div className="locked-field">
+                          🏢 <span style={{fontWeight:600}}>{sessionTech?.sfName}</span>
+                        </div>
+                      </div>
                     </div>
                     <div className="fg one">
                       <div className="field"><label>Installation Address</label><textarea value={f.address} onChange={e=>field("address",e.target.value)} placeholder="Site address (optional)"/></div>
                     </div>
                   </div>
+
                   <div className="sec">
                     <div className="sec-h">
                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
@@ -630,6 +805,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+
                   <div className="sec">
                     <div className="sec-h">
                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -712,11 +888,11 @@ export default function App() {
                               {it.desc === "Miscellaneous (Please specify)" && (
                                 <tr key={i+"_misc"}>
                                   <td colSpan="4" style={{padding:'6px 8px',background:'#FEFCE8'}}>
-                                    <input 
-                                      type="text" 
-                                      value={miscDesc} 
-                                      onChange={e=>setMiscDesc(e.target.value)} 
-                                      placeholder="Specify the work/item..." 
+                                    <input
+                                      type="text"
+                                      value={miscDesc}
+                                      onChange={e=>setMiscDesc(e.target.value)}
+                                      placeholder="Specify the work/item..."
                                       style={{width:'100%',padding:'6px 8px',border:'1.5px solid #FDE047',borderRadius:6,fontSize:11,outline:'none'}}
                                     />
                                   </td>
@@ -728,6 +904,7 @@ export default function App() {
                       </table>
                     )}
                   </div>
+
                   <div className="gst-row">
                     <label className="gst-toggle"><input type="checkbox" checked={f.gstOn} onChange={e=>field("gstOn",e.target.checked)}/><span className="gst-slider"/></label>
                     <span className="gst-lbl">Apply GST @ 18%</span>
@@ -749,6 +926,8 @@ export default function App() {
                     </button>
                   </div>
                 </>}
+
+                {/* ─── Pending Screen ─── */}
                 {authed && screen === "pending" && (
                   <div className="pending-wrap">
                     <div className="pulse-ring">📲</div>
@@ -766,6 +945,8 @@ export default function App() {
                     <button className="back-btn" onClick={reset}>✕ Cancel &amp; Start New TCR</button>
                   </div>
                 )}
+
+                {/* ─── Done Screen ─── */}
                 {authed && screen === "done" && (
                   <div className="done-wrap">
                     <div className="done-icon">✅</div>
@@ -786,6 +967,7 @@ export default function App() {
                   </div>
                 )}
               </div>
+
               <div className="wa-ts">
                 {new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
                 <svg width="14" height="10" viewBox="0 0 16 11" fill="#53BDEB"><path d="M15.01.227l-1.36-1.227-7.75 8.61L2.36 4.06 1 5.288l4.55 4.485zM11.45 1L6.01 7.06 4.64 5.53 3.28 6.76l2.73 2.74 6.8-7.58z"/></svg>
@@ -795,7 +977,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MASTER TAB */}
+      {/* ══════════════════════════════════════════════════════ MASTER TAB ═══ */}
       {mainTab==='master' && (
         <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
           <div style={{maxWidth:720,margin:'0 auto'}}>
@@ -820,12 +1002,121 @@ export default function App() {
                   <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginTop:2}}>GENERAL HVAC Solutions India Pvt Ltd</div>
                 </div>
                 {masterMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{masterMsg}</div>}
-                <div style={{display:'flex',gap:6,marginBottom:12}}>
-                  {[['stock','📊 Stock'],['technicians','👷 Technicians'],['materials','🏷️ Prices'],['records','📁 Records']].map(([k,l])=>(
-                    <button key={k} onClick={()=>setMasterTab(k)} style={{flex:1,padding:'9px 4px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:12,fontWeight:600,cursor:'pointer',background:masterTab===k?'white':'rgba(255,255,255,.5)',color:masterTab===k?'#E8001D':'#6B7280',boxShadow:masterTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
+
+                {/* Sub-tabs — SFs tab added first */}
+                <div style={{display:'flex',gap:5,marginBottom:12,overflowX:'auto',paddingBottom:2}}>
+                  {[['sfs','🏢 SFs'],['stock','📊 Stock'],['technicians','👷 Techs'],['materials','🏷️ Prices'],['records','📁 Records']].map(([k,l])=>(
+                    <button key={k} onClick={()=>setMasterTab(k)} style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',background:masterTab===k?'white':'rgba(255,255,255,.5)',color:masterTab===k?'#E8001D':'#6B7280',boxShadow:masterTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
                   ))}
                 </div>
+
                 {masterLoading&&<div style={{textAlign:'center',padding:40,color:'#6B7280'}}>Loading...</div>}
+
+                {/* ─── SERVICE CENTRES TAB (NEW) ─── */}
+                {!masterLoading && masterTab==='sfs' && (
+                  <div>
+                    {/* Create SF */}
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>➕ Create Service Centre</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>SF ID</label>
+                          <input value={newSfId} onChange={e=>setNewSfId(e.target.value)} placeholder="e.g. SF001"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>SF Name</label>
+                          <input value={newSfName} onChange={e=>setNewSfName(e.target.value)} placeholder="Centre name"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Password</label>
+                          <input value={newSfPwd} onChange={e=>setNewSfPwd(e.target.value)} placeholder="SF password"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                      </div>
+                      <button onClick={createSf} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#1D4ED8,#1E40AF)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                        Create Service Centre
+                      </button>
+                    </div>
+
+                    {/* Add Technician to SF */}
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>👷 Add Technician to SF</div>
+                      <div style={{marginBottom:8}}>
+                        <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Service Centre</label>
+                        <select value={selSfForTech} onChange={e=>setSelSfForTech(e.target.value)}
+                          style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}>
+                          <option value="">Select SF...</option>
+                          {sfs.map(s=><option key={s.id} value={s.id}>{s.id} — {s.name}</option>)}
+                        </select>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech ID</label>
+                          <input value={newSfTechId} onChange={e=>setNewSfTechId(e.target.value)} placeholder="e.g. TECH001"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Full Name</label>
+                          <input value={newSfTechName} onChange={e=>setNewSfTechName(e.target.value)} placeholder="Name"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Password</label>
+                          <input value={newSfTechPwd} onChange={e=>setNewSfTechPwd(e.target.value)} placeholder="Password"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                      </div>
+                      <button onClick={addTechToSf} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                        Add Technician
+                      </button>
+                    </div>
+
+                    {/* SF List */}
+                    {sfLoading && <div style={{textAlign:'center',padding:20,color:'#6B7280'}}>Loading SFs…</div>}
+                    {!sfLoading && sfs.length===0 && (
+                      <div style={{background:'white',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                        No service centres yet. Create one above.
+                      </div>
+                    )}
+                    {sfs.map(sf => (
+                      <div key={sf.id} style={{background:'white',borderRadius:12,marginBottom:10,boxShadow:'0 2px 8px rgba(0,0,0,.06)',overflow:'hidden'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',cursor:'pointer',background:expandedSf===sf.id?'#FFF5F5':'white'}}
+                          onClick={()=>setExpandedSf(expandedSf===sf.id?null:sf.id)}>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:700}}>{sf.name}</div>
+                            <div style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>ID: {sf.id} &nbsp;·&nbsp; {sf.techs?.length||0} technician{sf.techs?.length!==1?'s':''}</div>
+                          </div>
+                          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                            <span style={{fontSize:11,color:'#6B7280'}}>{expandedSf===sf.id?'▲':'▼'}</span>
+                            <button onClick={e=>{e.stopPropagation();removeSf(sf.id);}}
+                              style={{padding:'3px 8px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:10,cursor:'pointer'}}>Remove</button>
+                          </div>
+                        </div>
+                        {expandedSf===sf.id && (
+                          <div style={{borderTop:'1px solid #F3F4F6',padding:'10px 14px'}}>
+                            {(!sf.techs || sf.techs.length===0) && (
+                              <div style={{fontSize:11,color:'#9CA3AF',textAlign:'center',padding:8}}>No technicians in this SF yet</div>
+                            )}
+                            {sf.techs?.map(t=>(
+                              <div key={t.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #F9FAFB'}}>
+                                <div>
+                                  <span style={{fontSize:12,fontWeight:600}}>{t.name}</span>
+                                  <span style={{fontSize:10,color:'#6B7280',fontFamily:'monospace',marginLeft:6}}>({t.id})</span>
+                                </div>
+                                <button onClick={()=>removeTechFromSf(sf.id,t.id)}
+                                  style={{padding:'3px 8px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:10,cursor:'pointer'}}>Remove</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* ─── STOCK TAB ─── */}
                 {!masterLoading&&masterTab==='stock'&&(
                   <div>
                     <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
@@ -871,17 +1162,22 @@ export default function App() {
                     })}
                   </div>
                 )}
+
+                {/* ─── TECHNICIANS TAB (stock tracking list) ─── */}
                 {!masterLoading&&masterTab==='technicians'&&(
                   <div>
+                    <div style={{background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:11,color:'#1E40AF'}}>
+                      ℹ️ This list is for <strong>stock tracking</strong>. To create technician <strong>login accounts</strong>, use the 🏢 SFs tab.
+                    </div>
                     <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>➕ Add Technician</div>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>➕ Add to Stock Tracking</div>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
                         <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech ID</label>
                           <input value={newTechId} onChange={e=>setNewTechId(e.target.value)} placeholder="e.g. TECH001" style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/></div>
                         <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Full Name</label>
                           <input value={newTechName} onChange={e=>setNewTechName(e.target.value)} placeholder="Technician name" style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/></div>
                       </div>
-                      <button onClick={addTechnician} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>Add Technician</button>
+                      <button onClick={addTechnician} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>Add to Stock Tracking</button>
                     </div>
                     <div style={{background:'white',borderRadius:12,padding:14,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
                       <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>👷 All Technicians ({techs.length})</div>
@@ -895,6 +1191,8 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
+                {/* ─── MATERIALS / PRICES TAB ─── */}
                 {!masterLoading&&masterTab==='materials'&&(
                   <div style={{background:'white',borderRadius:12,padding:14,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
                     <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>🏷️ Material Prices</div>
@@ -914,6 +1212,8 @@ export default function App() {
                     <button onClick={saveMaterialPrices} style={{width:'100%',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',marginTop:12}}>Save Prices</button>
                   </div>
                 )}
+
+                {/* ─── RECORDS TAB ─── */}
                 {!masterLoading&&masterTab==='records'&&(
                   <div>
                     <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
@@ -948,7 +1248,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MY STOCK TAB */}
+      {/* ══════════════════════════════════════════════════ MY STOCK TAB ═══ */}
       {mainTab==='inventory' && (
         <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
           <div style={{maxWidth:480,margin:'0 auto'}}>
