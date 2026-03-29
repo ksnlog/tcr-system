@@ -3,7 +3,11 @@
 // GET  (no sfId)                → returns global technician list (used by Master stock tab)
 // POST { password, action, techId, techName } → add/remove from global list (Master stock tab)
 
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
+const kv = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 
 const MASTER_PWD = 'Project@1';
 
