@@ -3,8 +3,8 @@ import { Redis } from '@upstash/redis';
 import bcrypt from 'bcryptjs';
 
 const kv = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
 const LEGACY_PWD = 'Project@1'; // accepted only if no password set yet in DB
