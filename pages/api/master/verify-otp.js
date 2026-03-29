@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
   const savedOtp = await kv.get('master:otp');
   if (!savedOtp) return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
-  if (savedOtp !== otp) return res.status(400).json({ error: 'Incorrect OTP. Try again.' });
+  if (String(savedOtp) !== String(otp)) return res.status(400).json({ error: 'Incorrect OTP. Try again.' });
 
   // Hash and save new password
   const hashed = await bcrypt.hash(newPassword, 10);
