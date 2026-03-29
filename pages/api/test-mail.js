@@ -9,14 +9,12 @@ export default async function handler(req, res) {
 
 ---
 
-### Step 6 — Save/Commit the file
-- Scroll down to the bottom of the page
-- You'll see **"Commit new file"** section
-- Just click the green **"Commit new file"** button
+### Step 4 — Commit
+Scroll down → click green **"Commit changes"** button.
 
 ---
 
-### Step 7 — Wait 30–60 seconds for Vercel to redeploy
+### Step 5 — Wait for Vercel to redeploy (30–60 sec)
 Then visit:
 ```
-https://your-vercel-site.com/api/test-mail
+https://your-project-name.vercel.app/api/test-mail
