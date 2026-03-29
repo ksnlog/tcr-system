@@ -1328,7 +1328,6 @@ export default function App() {
           </div>
         </div>
       )}
-      )}
 
       {/* ══════════════════════════════════════════════════ MY STOCK TAB ═══ */}
       {mainTab==='inventory' && (
