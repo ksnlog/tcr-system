@@ -27,7 +27,6 @@ const tonOptions = [
   {v:"mix",    l:"Multiple Mix"},
   {v:"window", l:"Window AC"},
 ];
-const MASTER_PWD = 'Project@1';
 const fmtINR = n => Number(n||0).toLocaleString('en-IN');
 
 export default function App() {
@@ -74,6 +73,11 @@ export default function App() {
   const [allStock, setAllStock] = useState({});
   const [masterLoading, setMasterLoading] = useState(false);
   const [masterMsg, setMasterMsg] = useState('');
+  const [masterLoginStep, setMasterLoginStep] = useState('password'); // 'password' | 'otp' | 'newpwd'
+  const [masterOtp, setMasterOtp] = useState('');
+  const [masterNewPwd, setMasterNewPwd] = useState('');
+  const [masterNewPwd2, setMasterNewPwd2] = useState('');
+  const [masterOtpSending, setMasterOtpSending] = useState(false);
   const [newTechId, setNewTechId] = useState('');
   const [newTechName, setNewTechName] = useState('');
   const [selTech, setSelTech] = useState('');
@@ -477,6 +481,40 @@ export default function App() {
   function getStockVal(tid) { const s=allStock[tid]||{}; let v=0; materials.forEach(m=>{v+=(s[m.id]||0)*m.costPrice;}); return v; }
 
   // ── SF Management Functions ────────────────────────────────────────────────
+  async function doMasterLogin() {
+    if (!masterPwd.trim()) return setMasterPwdErr('Enter your password');
+    const res = await fetch('/api/master/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password: masterPwd })
+    });
+    const json = await res.json();
+    if (!res.ok) return setMasterPwdErr(json.error || 'Incorrect password');
+    setMasterAuthed(true); setMasterPwdErr(''); setMasterPwd('');
+  }
+
+  async function doSendOtp() {
+    setMasterOtpSending(true); setMasterPwdErr('');
+    const res = await fetch('/api/master/send-otp', { method: 'POST' });
+    const json = await res.json();
+    setMasterOtpSending(false);
+    if (!res.ok) return setMasterPwdErr(json.error || 'Failed to send OTP');
+    setMasterLoginStep('otp');
+  }
+
+  async function doVerifyOtp() {
+    if (!masterOtp.trim()) return setMasterPwdErr('Enter the OTP');
+    if (!masterNewPwd) return setMasterPwdErr('Enter a new password');
+    if (masterNewPwd !== masterNewPwd2) return setMasterPwdErr('Passwords do not match');
+    const res = await fetch('/api/master/verify-otp', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ otp: masterOtp, newPassword: masterNewPwd })
+    });
+    const json = await res.json();
+    if (!res.ok) return setMasterPwdErr(json.error || 'Failed to verify OTP');
+    setMasterLoginStep('done');
+  }
+
+  async function loadSfs() {   // ← this line was already there
   async function loadSfs() {
     setSfLoading(true);
     try {
@@ -978,21 +1016,61 @@ export default function App() {
       )}
 
       {/* ══════════════════════════════════════════════════════ MASTER TAB ═══ */}
-      {mainTab==='master' && (
-        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
-          <div style={{maxWidth:720,margin:'0 auto'}}>
-            {!masterAuthed ? (
+      {!masterAuthed ? (
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
-                <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:360,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
+                <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:380,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
                   <div style={{fontSize:36,marginBottom:12}}>📦</div>
                   <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>Inventory Master</div>
                   <div style={{fontSize:12,color:'#6B7280',marginBottom:24}}>GENERAL HVAC Solutions</div>
-                  <input type="password" value={masterPwd} onChange={e=>setMasterPwd(e.target.value)}
-                    onKeyDown={e=>{if(e.key==='Enter'){if(masterPwd===MASTER_PWD){setMasterAuthed(true);setMasterPwdErr('');}else setMasterPwdErr('Incorrect password');}}}
-                    placeholder="Master password" style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center'}}/>
-                  {masterPwdErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{masterPwdErr}</div>}
-                  <button onClick={()=>{if(masterPwd===MASTER_PWD){setMasterAuthed(true);setMasterPwdErr('');}else setMasterPwdErr('Incorrect password');}}
-                    style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer'}}>Login</button>
+
+                  {masterLoginStep === 'password' && <>
+                    <input type="password" value={masterPwd} onChange={e=>setMasterPwd(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==='Enter') doMasterLogin(); }}
+                      placeholder="Master password"
+                      style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center'}}/>
+                    {masterPwdErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{masterPwdErr}</div>}
+                    <button onClick={doMasterLogin}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:12}}>
+                      Login
+                    </button>
+                    <button onClick={doSendOtp} disabled={masterOtpSending}
+                      style={{width:'100%',padding:10,background:'none',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#6B7280',cursor:'pointer'}}>
+                      {masterOtpSending ? 'Sending OTP...' : '🔑 Forgot password? Reset via Email'}
+                    </button>
+                  </>}
+
+                  {masterLoginStep === 'otp' && <>
+                    <div style={{fontSize:13,color:'#6B7280',marginBottom:16}}>OTP sent to your registered email. Enter it below.</div>
+                    <input type="text" value={masterOtp} onChange={e=>setMasterOtp(e.target.value)}
+                      placeholder="6-digit OTP" maxLength={6}
+                      style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:20,marginBottom:8,outline:'none',textAlign:'center',letterSpacing:8}}/>
+                    {masterPwdErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{masterPwdErr}</div>}
+                    <input type="password" value={masterNewPwd} onChange={e=>setMasterNewPwd(e.target.value)}
+                      placeholder="New password"
+                      style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center'}}/>
+                    <input type="password" value={masterNewPwd2} onChange={e=>setMasterNewPwd2(e.target.value)}
+                      placeholder="Confirm new password"
+                      style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center'}}/>
+                    <button onClick={doVerifyOtp}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:8}}>
+                      Set New Password
+                    </button>
+                    <button onClick={()=>{setMasterLoginStep('password');setMasterPwdErr('');}}
+                      style={{width:'100%',padding:10,background:'none',border:'none',fontSize:12,color:'#9CA3AF',cursor:'pointer'}}>
+                      ← Back
+                    </button>
+                  </>}
+
+                  {masterLoginStep === 'done' && <>
+                    <div style={{fontSize:40,marginBottom:12}}>✅</div>
+                    <div style={{fontSize:15,fontWeight:600,marginBottom:8}}>Password updated!</div>
+                    <div style={{fontSize:13,color:'#6B7280',marginBottom:20}}>You can now log in with your new password.</div>
+                    <button onClick={()=>{setMasterLoginStep('password');setMasterOtp('');setMasterNewPwd('');setMasterNewPwd2('');setMasterPwdErr('');}}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                      Go to Login
+                    </button>
+                  </>}
+
                 </div>
               </div>
             ) : (
