@@ -685,8 +685,8 @@ export default function App() {
         .wa-btn{width:100%;padding:13px;background:linear-gradient(135deg,#25D366,#128C7E);color:white;border:none;border-radius:11px;font-family:'Poppins',sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px}
         .wa-btn-sm{width:100%;padding:10px;background:none;border:1.5px solid #25D366;color:#128C7E;border-radius:11px;font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;margin-bottom:10px}
         .back-btn{background:none;border:1.5px solid var(--border);border-radius:10px;padding:9px;width:100%;font-family:'Poppins',sans-serif;font-size:12.5px;color:var(--muted);cursor:pointer;margin-top:4px}
-        .polling-dots::after{content:'...';animation:dots 1.5s steps(3,end) infinite}
-        @keyframes dots{0%{content:'\2e'}33%{content:'\2e\2e'}66%{content:'\2e\2e\2e'}}
+        
+        
         .info-card{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:11px 13px;text-align:left;margin-bottom:10px;font-size:11px;color:#166534}
         .done-wrap{padding:20px 16px 28px;text-align:center}
         .done-icon{width:70px;height:70px;background:#DCFCE7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:34px}
@@ -979,7 +979,7 @@ export default function App() {
                       <div style={{fontSize:11,color:'#166534',marginTop:3,marginBottom:10}}>Ask the customer to open the link and confirm on their own device.</div>
                       <button onClick={()=>window.open(waLink,"_blank")} style={{padding:'8px 20px',background:'#25D366',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>↺ Resend to Customer</button>
                     </div>
-                    <p style={{fontSize:10.5,color:"var(--muted)",marginBottom:12}} className="polling-dots">Waiting for customer approval</p>
+                    <p style={{fontSize:10.5,color:"var(--muted)",marginBottom:12}} className="">Waiting for customer approval...</p>
                     <button className="back-btn" onClick={reset}>✕ Cancel &amp; Start New TCR</button>
                   </div>
                 )}
