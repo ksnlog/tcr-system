@@ -514,7 +514,6 @@ export default function App() {
     setMasterLoginStep('done');
   }
 
-  async function loadSfs() {   // ← this line was already there
   async function loadSfs() {
     setSfLoading(true);
     try {
