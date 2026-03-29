@@ -202,6 +202,7 @@ export default function App() {
           clearInterval(pollRef.current); clearInterval(timerRef.current);
           setDoneData(json.fullData); setScreen("done");
           buildTechPDF(json.fullData, tok);
+          try { await fetch('/api/records', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(json.fullData) }); } catch(e) { console.log('Record save error:',e); }
         }
         if (json.status === "expired") { clearInterval(pollRef.current); clearInterval(timerRef.current); setScreen("form"); setErr("Confirmation link expired. Please resubmit."); }
         if (json.remaining !== undefined) setRemaining(json.remaining);
@@ -305,6 +306,61 @@ export default function App() {
     setF({custName:"",mobile:"",callNo:"",serviceDate:"",techName:"",ssdName:"",address:"",tonnage:"",unitCount:1,gstOn:false,gstNumber:""});
     setUnits([{model:"",serial:"",pipeSize:""}]); setAddItems(additionalItems()); setActItems(actualItems()); setActSelected([]);
     setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800); pdfBlobRef.current=null; gpsRef.current=null; setCustStand(false);
+  }
+
+  async function downloadExcel(records, filename) {
+    if (!records || records.length === 0) return alert('No records found.');
+    const XLSX = await import('xlsx');
+    const rows = records.map(r => {
+      const getAdd = no => (r.additionalItems||[]).find(i=>i.no===no);
+      const getAct = desc => (r.actualItems||[]).find(i=>i.desc===desc);
+      const itemQty = no => { const it=getAdd(no); return it&&it.qty>0 ? parseFloat(it.qty)||0 : 0; };
+      const itemAmt = no => { const it=getAdd(no); return it&&it.qty>0 ? (parseFloat(it.rate)||0)*(parseFloat(it.qty)||0) : 0; };
+      const actQty = desc => { const it=getAct(desc); return it&&it.actual>0 ? parseFloat(it.actual)||0 : 0; };
+      const actAmt = desc => { const it=getAct(desc); if(!it||!it.actual) return 0; return it.rate>0 ? it.rate*it.actual : it.actual; };
+      const copperQty = itemQty('2.1')||itemQty('2.2');
+      const copperAmt = itemAmt('2.1')||itemAmt('2.2');
+      return {
+        'Job No.'                    : r.callNo||'',
+        'Service Date'               : r.serviceDate||'',
+        'Confirmed At'               : r.confirmedAt ? new Date(r.confirmedAt).toLocaleString('en-IN') : '',
+        'Customer Name'              : r.custName||'',
+        'Mobile'                     : r.mobile||'',
+        'Technician'                 : r.techName||'',
+        'SSD / SF'                   : r.ssdName||'',
+        'Tonnage'                    : r.tonnage||'',
+        'Units'                      : r.unitCount||1,
+        'GST Applied'                : r.gstOn?'Yes':'No',
+        'GST Number'                 : r.gstNumber||'',
+        'Copper Pipe Qty (Ft)'       : copperQty,
+        'Copper Pipe Amt (Rs.)'      : copperAmt,
+        'Electrical Cable Qty (Ft)'  : itemQty('3'),
+        'Electrical Cable Amt (Rs.)' : itemAmt('3'),
+        'ODU Stand Qty'              : itemQty('4'),
+        'ODU Stand Amt (Rs.)'        : itemAmt('4'),
+        'Drain Pipe Qty (Ft)'        : itemQty('5'),
+        'Drain Pipe Amt (Rs.)'       : itemAmt('5'),
+        'Dismantling Qty'            : itemQty('6'),
+        'Dismantling Amt (Rs.)'      : itemAmt('6'),
+        'Wrapping Tape (Ft)'         : actQty('Wrapping Tape'),
+        'Wrapping Tape Amt (Rs.)'    : actAmt('Wrapping Tape'),
+        'Rubber Pad (Qty)'           : actQty('Rubber Pad'),
+        'Rubber Pad Amt (Rs.)'       : actAmt('Rubber Pad'),
+        'Plug Top (Qty)'             : actQty('Plug Top'),
+        'Plug Top Amt (Rs.)'         : actAmt('Plug Top'),
+        'Nitrogen Flushing (Qty)'    : actQty('Nitrogen flushing'),
+        'Nitrogen Flushing Amt (Rs.)': actAmt('Nitrogen flushing'),
+        'Miscellaneous'              : actQty('Miscellaneous (Please specify)'),
+        'Sub Total (Rs.)'            : Number(r.sub)||0,
+        'GST Amt (Rs.)'              : Number(r.gst)||0,
+        'Total (Rs.)'                : Number(r.total)||0,
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = Object.keys(rows[0]).map(k=>({wch:Math.max(k.length,14)}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'TCR Records');
+    XLSX.writeFile(wb, filename);
   }
 
   const { sub, gst, total } = calcTotals();
@@ -765,7 +821,7 @@ export default function App() {
                 </div>
                 {masterMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{masterMsg}</div>}
                 <div style={{display:'flex',gap:6,marginBottom:12}}>
-                  {[['stock','📊 Stock'],['technicians','👷 Technicians'],['materials','🏷️ Prices']].map(([k,l])=>(
+                  {[['stock','📊 Stock'],['technicians','👷 Technicians'],['materials','🏷️ Prices'],['records','📁 Records']].map(([k,l])=>(
                     <button key={k} onClick={()=>setMasterTab(k)} style={{flex:1,padding:'9px 4px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:12,fontWeight:600,cursor:'pointer',background:masterTab===k?'white':'rgba(255,255,255,.5)',color:masterTab===k?'#E8001D':'#6B7280',boxShadow:masterTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
                   ))}
                 </div>
@@ -858,6 +914,34 @@ export default function App() {
                     <button onClick={saveMaterialPrices} style={{width:'100%',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',marginTop:12}}>Save Prices</button>
                   </div>
                 )}
+                {!masterLoading&&masterTab==='records'&&(
+                  <div>
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>📁 TCR Records</div>
+                      <div style={{fontSize:11,color:'#6B7280',marginBottom:14}}>Download approved TCR data as Excel</div>
+                      <button onClick={async()=>{
+                        const r=await fetch('/api/records');
+                        const d=await r.json();
+                        downloadExcel(d,'TCR_All_Records.xlsx');
+                      }} style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:9,fontSize:12,fontWeight:600,cursor:'pointer',marginBottom:10,display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
+                        <svg width="15" height="15" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/></svg>
+                        Download All TCRs (Excel)
+                      </button>
+                      <div style={{fontSize:11,fontWeight:600,color:'#374151',marginBottom:8,marginTop:4}}>Download by Technician</div>
+                      {techs.map(t=>(
+                        <button key={t.id} onClick={async()=>{
+                          const r=await fetch('/api/records?techId='+t.id);
+                          const d=await r.json();
+                          downloadExcel(d,'TCR_'+t.id+'_'+t.name.replace(/\s+/g,'_')+'.xlsx');
+                        }} style={{width:'100%',padding:'9px 12px',background:'#F3F4F6',border:'1px solid #E5E7EB',borderRadius:8,fontSize:12,fontWeight:500,cursor:'pointer',marginBottom:6,display:'flex',alignItems:'center',justifyContent:'space-between',color:'#111827'}}>
+                          <span>🔧 {t.name} <span style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>({t.id})</span></span>
+                          <span style={{fontSize:11,color:'#16A34A',fontWeight:600}}>⬇ Excel</span>
+                        </button>
+                      ))}
+                      {techs.length===0&&<div style={{color:'#9CA3AF',fontSize:12,textAlign:'center',padding:16}}>No technicians added yet</div>}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -918,6 +1002,14 @@ export default function App() {
                       );})}
                     </div>
                     <div style={{textAlign:'center',marginTop:16,fontSize:10,color:'#9CA3AF'}}>Stock deducts automatically when TCR is submitted</div>
+                    <button onClick={async()=>{
+                      const r=await fetch('/api/records?techId='+myTechId.trim().toUpperCase());
+                      const d=await r.json();
+                      downloadExcel(d,'TCR_'+myTechId.trim().toUpperCase()+'.xlsx');
+                    }} style={{width:'100%',marginTop:12,padding:'11px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:9,fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
+                      <svg width="15" height="15" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/></svg>
+                      Download My TCR Records (Excel)
+                    </button>
                   </>);
                 })()}
               </>
