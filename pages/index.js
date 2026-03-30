@@ -107,7 +107,7 @@ export default function App() {
 
   // ── Service Centre Tab State ───────────────────────────────────────────────
   const [sfTabAuthed, setSfTabAuthed] = useState(false);
-  const [sfTabSession, setSfTabSession] = useState(null); // {sfId, sfName}
+  const [sfTabSession, setSfTabSession] = useState(null); // {sfId, sfName, gst, address, contact, email}
   const [sfTabIdInput, setSfTabIdInput] = useState('');
   const [sfTabPwdInput, setSfTabPwdInput] = useState('');
   const [sfTabErr, setSfTabErr] = useState('');
@@ -122,6 +122,9 @@ export default function App() {
   const [sfTabNewTechId, setSfTabNewTechId] = useState('');
   const [sfTabNewTechName, setSfTabNewTechName] = useState('');
   const [sfTabNewTechPwd, setSfTabNewTechPwd] = useState('');
+  // Master — SF profile editing
+  const [editingSfId, setEditingSfId] = useState(null);
+  const [sfProfileDraft, setSfProfileDraft] = useState({});
 
   const field = (k, v) => setF(p => ({...p, [k]: v}));
 
@@ -625,11 +628,27 @@ export default function App() {
       });
       const json = await res.json();
       if (!res.ok) { setSfTabErr(json.error || 'Invalid SF ID or password'); setSfTabLoading(false); return; }
-      setSfTabSession({ sfId: json.sfId, sfName: json.sfName });
+      setSfTabSession({
+        sfId: json.sfId, sfName: json.sfName,
+        gst: json.gst || '', address: json.address || '',
+        contact: json.contact || '', email: json.email || '',
+      });
       setSfTabAuthed(true);
       loadSfTabData(json.sfId);
     } catch(e) { setSfTabErr('Network error'); }
     setSfTabLoading(false);
+  }
+
+  async function updateSfProfile(sfId, draft) {
+    const res = await fetch('/api/admin/sfs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: 'Project@1', action: 'updateSf', sfId, ...draft })
+    });
+    const json = await res.json();
+    if (json.error) return setMasterMsg(json.error);
+    setSfs(json.sfs);
+    setEditingSfId(null); setSfProfileDraft({});
+    setMasterMsg('Profile updated!'); setTimeout(() => setMasterMsg(''), 3000);
   }
 
   async function loadSfTabData(sfId) {
@@ -1285,11 +1304,19 @@ export default function App() {
                     )}
                     {sfs.map(sf => (
                       <div key={sf.id} style={{background:'white',borderRadius:12,marginBottom:10,boxShadow:'0 2px 8px rgba(0,0,0,.06)',overflow:'hidden'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',cursor:'pointer',background:expandedSf===sf.id?'#FFF5F5':'white'}}
-                          onClick={()=>setExpandedSf(expandedSf===sf.id?null:sf.id)}>
+                        {/* Card header */}
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',cursor:'pointer',background:expandedSf===sf.id?'#EFF6FF':'white'}}
+                          onClick={()=>{
+                            const opening = expandedSf !== sf.id;
+                            setExpandedSf(opening ? sf.id : null);
+                            if (opening) { setEditingSfId(null); setSfProfileDraft({}); }
+                          }}>
                           <div>
                             <div style={{fontSize:13,fontWeight:700}}>{sf.name}</div>
-                            <div style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>ID: {sf.id} &nbsp;·&nbsp; {sf.techs?.length||0} technician{sf.techs?.length!==1?'s':''}</div>
+                            <div style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>
+                              ID: {sf.id} &nbsp;·&nbsp; {sf.techs?.length||0} technician{sf.techs?.length!==1?'s':''}
+                              {sf.contact && <span> &nbsp;·&nbsp; 📞 {sf.contact}</span>}
+                            </div>
                           </div>
                           <div style={{display:'flex',gap:8,alignItems:'center'}}>
                             <span style={{fontSize:11,color:'#6B7280'}}>{expandedSf===sf.id?'▲':'▼'}</span>
@@ -1297,21 +1324,94 @@ export default function App() {
                               style={{padding:'3px 8px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:10,cursor:'pointer'}}>Remove</button>
                           </div>
                         </div>
+
                         {expandedSf===sf.id && (
-                          <div style={{borderTop:'1px solid #F3F4F6',padding:'10px 14px'}}>
-                            {(!sf.techs || sf.techs.length===0) && (
-                              <div style={{fontSize:11,color:'#9CA3AF',textAlign:'center',padding:8}}>No technicians in this SF yet</div>
-                            )}
-                            {sf.techs?.map(t=>(
-                              <div key={t.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #F9FAFB'}}>
-                                <div>
-                                  <span style={{fontSize:12,fontWeight:600}}>{t.name}</span>
-                                  <span style={{fontSize:10,color:'#6B7280',fontFamily:'monospace',marginLeft:6}}>({t.id})</span>
-                                </div>
-                                <button onClick={()=>removeTechFromSf(sf.id,t.id)}
-                                  style={{padding:'3px 8px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:10,cursor:'pointer'}}>Remove</button>
+                          <div style={{borderTop:'1px solid #F3F4F6',padding:'12px 14px'}}>
+
+                            {/* ── Profile section ── */}
+                            <div style={{marginBottom:12}}>
+                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                                <div style={{fontSize:11,fontWeight:700,color:'#1D4ED8'}}>🏢 SF Profile Details</div>
+                                {editingSfId !== sf.id
+                                  ? <button onClick={()=>{ setEditingSfId(sf.id); setSfProfileDraft({ sfName:sf.name, gst:sf.gst||'', address:sf.address||'', contact:sf.contact||'', email:sf.email||'' }); }}
+                                      style={{padding:'4px 10px',background:'#EFF6FF',color:'#1D4ED8',border:'1px solid #BFDBFE',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:600}}>
+                                      ✏️ Edit
+                                    </button>
+                                  : <div style={{display:'flex',gap:6}}>
+                                      <button onClick={()=>updateSfProfile(sf.id, sfProfileDraft)}
+                                        style={{padding:'4px 10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:600}}>
+                                        Save
+                                      </button>
+                                      <button onClick={()=>{ setEditingSfId(null); setSfProfileDraft({}); }}
+                                        style={{padding:'4px 10px',background:'#F3F4F6',color:'#6B7280',border:'none',borderRadius:6,fontSize:11,cursor:'pointer'}}>
+                                        Cancel
+                                      </button>
+                                    </div>
+                                }
                               </div>
-                            ))}
+
+                              {editingSfId !== sf.id ? (
+                                /* ── Read-only view ── */
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                                  {[
+                                    ['SF Name',   sf.name],
+                                    ['SF ID',     sf.id],
+                                    ['GST No.',   sf.gst     || '—'],
+                                    ['Contact',   sf.contact || '—'],
+                                    ['Email',     sf.email   || '—'],
+                                    ['Address',   sf.address || '—'],
+                                  ].map(([label, val])=>(
+                                    <div key={label} style={{background:'#F9FAFB',borderRadius:7,padding:'6px 9px'}}>
+                                      <div style={{fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',marginBottom:2}}>{label}</div>
+                                      <div style={{fontSize:11,fontWeight:600,color:'#111827',wordBreak:'break-all'}}>{val}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                /* ── Edit form ── */
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                                  {[
+                                    ['SF Name',    'sfName',  'text',  'Centre name'],
+                                    ['GST Number', 'gst',     'text',  '15-char GST'],
+                                    ['Contact No.','contact', 'tel',   '10-digit mobile'],
+                                    ['Email ID',   'email',   'email', 'Email address'],
+                                  ].map(([label, key, type, ph])=>(
+                                    <div key={key}>
+                                      <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>{label}</label>
+                                      <input type={type} value={sfProfileDraft[key]||''} placeholder={ph}
+                                        onChange={e=>setSfProfileDraft(p=>({...p,[key]:e.target.value}))}
+                                        style={{width:'100%',padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:12,outline:'none'}}/>
+                                    </div>
+                                  ))}
+                                  <div style={{gridColumn:'1/-1'}}>
+                                    <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Address</label>
+                                    <textarea value={sfProfileDraft.address||''} placeholder="Full address"
+                                      onChange={e=>setSfProfileDraft(p=>({...p,address:e.target.value}))}
+                                      rows={2}
+                                      style={{width:'100%',padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:12,outline:'none',resize:'none',fontFamily:'inherit'}}/>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* ── Technician list ── */}
+                            <div style={{borderTop:'1px solid #F3F4F6',paddingTop:10}}>
+                              <div style={{fontSize:11,fontWeight:700,color:'#374151',marginBottom:6}}>👷 Technicians</div>
+                              {(!sf.techs || sf.techs.length===0) && (
+                                <div style={{fontSize:11,color:'#9CA3AF',textAlign:'center',padding:8}}>No technicians in this SF yet</div>
+                              )}
+                              {sf.techs?.map(t=>(
+                                <div key={t.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #F9FAFB'}}>
+                                  <div>
+                                    <span style={{fontSize:12,fontWeight:600}}>{t.name}</span>
+                                    <span style={{fontSize:10,color:'#6B7280',fontFamily:'monospace',marginLeft:6}}>({t.id})</span>
+                                  </div>
+                                  <button onClick={()=>removeTechFromSf(sf.id,t.id)}
+                                    style={{padding:'3px 8px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:10,cursor:'pointer'}}>Remove</button>
+                                </div>
+                              ))}
+                            </div>
+
                           </div>
                         )}
                       </div>
@@ -1496,6 +1596,38 @@ export default function App() {
                   <button onClick={sfTabLogout} style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',color:'white',padding:'5px 12px',borderRadius:8,fontSize:11,cursor:'pointer'}}>
                     Logout
                   </button>
+                </div>
+
+                {/* Profile Details Card */}
+                <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#1D4ED8',marginBottom:10}}>🏢 Service Centre Details</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                    {[
+                      ['SF Name',   sfTabSession?.sfName],
+                      ['SF ID',     sfTabSession?.sfId],
+                      ['GST No.',   sfTabSession?.gst     || '—'],
+                      ['Contact',   sfTabSession?.contact || '—'],
+                      ['Email',     sfTabSession?.email   || '—'],
+                    ].map(([label,val])=>(
+                      <div key={label} style={{background:'#F0F7FF',borderRadius:7,padding:'7px 10px'}}>
+                        <div style={{fontSize:9,fontWeight:700,color:'#93C5FD',textTransform:'uppercase',marginBottom:2}}>{label}</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1E3A8A',wordBreak:'break-all'}}>{val}</div>
+                      </div>
+                    ))}
+                    {sfTabSession?.address && (
+                      <div style={{gridColumn:'1/-1',background:'#F0F7FF',borderRadius:7,padding:'7px 10px'}}>
+                        <div style={{fontSize:9,fontWeight:700,color:'#93C5FD',textTransform:'uppercase',marginBottom:2}}>Address</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1E3A8A'}}>{sfTabSession.address}</div>
+                      </div>
+                    )}
+                    {!sfTabSession?.address && (
+                      <div style={{gridColumn:'1/-1',background:'#F0F7FF',borderRadius:7,padding:'7px 10px'}}>
+                        <div style={{fontSize:9,fontWeight:700,color:'#93C5FD',textTransform:'uppercase',marginBottom:2}}>Address</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1E3A8A'}}>—</div>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{marginTop:8,fontSize:10,color:'#9CA3AF'}}>Contact your Master admin to update these details.</div>
                 </div>
 
                 {sfTabMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{sfTabMsg}</div>}
