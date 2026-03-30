@@ -42,7 +42,11 @@ export default async function handler(req, res) {
         const sfs = await kv.get('admin:sfs') || [];
         const sf = sfs.find(s => s.id === sfId.toUpperCase());
         if (!sf || sf.password !== sfPassword) return res.status(401).json({ error: 'Invalid SF ID or password' });
-        return res.status(200).json({ sfId: sf.id, sfName: sf.name });
+        return res.status(200).json({
+          sfId: sf.id, sfName: sf.name,
+          gst: sf.gst || '', address: sf.address || '',
+          contact: sf.contact || '', email: sf.email || '',
+        });
       } catch (e) {
         return res.status(500).json({ error: 'Server error' });
       }
@@ -53,15 +57,43 @@ export default async function handler(req, res) {
     try {
       // ── createSf ──
       if (action === 'createSf') {
-        const { sfId, sfName, sfPassword } = data;
+        const { sfId, sfName, sfPassword, gst, address, contact, email } = data;
         if (!sfId || !sfName || !sfPassword) return res.status(400).json({ error: 'sfId, sfName and sfPassword required' });
 
         let sfs = await kv.get('admin:sfs') || [];
         if (sfs.find(s => s.id === sfId)) return res.status(400).json({ error: `SF ID ${sfId} already exists` });
 
-        sfs.push({ id: sfId, name: sfName, password: sfPassword, createdAt: new Date().toISOString() });
+        sfs.push({
+          id: sfId, name: sfName, password: sfPassword,
+          gst: gst || '', address: address || '',
+          contact: contact || '', email: email || '',
+          createdAt: new Date().toISOString()
+        });
         await kv.set('admin:sfs', sfs);
         await kv.set(`sf:${sfId}:technicians`, []); // empty tech list
+
+        const hydrated = await hydrateSfs(sfs);
+        return res.status(200).json({ sfs: hydrated });
+      }
+
+      // ── updateSf ──
+      if (action === 'updateSf') {
+        const { sfId, sfName, gst, address, contact, email } = data;
+        if (!sfId) return res.status(400).json({ error: 'sfId required' });
+
+        let sfs = await kv.get('admin:sfs') || [];
+        const idx = sfs.findIndex(s => s.id === sfId);
+        if (idx === -1) return res.status(400).json({ error: `SF ${sfId} not found` });
+
+        sfs[idx] = {
+          ...sfs[idx],
+          ...(sfName  !== undefined && { name:    sfName  }),
+          ...(gst     !== undefined && { gst:     gst     }),
+          ...(address !== undefined && { address: address }),
+          ...(contact !== undefined && { contact: contact }),
+          ...(email   !== undefined && { email:   email   }),
+        };
+        await kv.set('admin:sfs', sfs);
 
         const hydrated = await hydrateSfs(sfs);
         return res.status(200).json({ sfs: hydrated });
