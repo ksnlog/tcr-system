@@ -97,6 +97,26 @@ export default function App() {
   const [newSfTechName, setNewSfTechName] = useState('');
   const [newSfTechPwd, setNewSfTechPwd] = useState('');
   const [expandedSf, setExpandedSf] = useState(null);
+   const [sfSpares, setSfSpares]           = useState([]);
+  const [sparesLoading, setSparesLoading] = useState(false);
+  const [sparesSearch, setSparesSearch]   = useState('');
+  const [showAddSpare, setShowAddSpare]   = useState(false);
+  const [newSpare, setNewSpare]           = useState({ materialCode:'', description:'', dp:'', mrp:'', stock:'' });
+  const [spareMsg, setSpareMsg]           = useState('');
+  const [stockAdjItem, setStockAdjItem]   = useState(null);   // materialCode being adjusted
+  const [stockAdjQty, setStockAdjQty]     = useState('');
+  const [stockAdjOp, setStockAdjOp]       = useState('add');  // 'add' | 'subtract' | 'set'
+ 
+  // ── Invoice State ─────────────────────────────────────────────────────────
+  const [showInvoice, setShowInvoice]         = useState(false);
+  const [invoiceItems, setInvoiceItems]       = useState([]);
+  const [invoiceCust, setInvoiceCust]         = useState({ name:'', mobile:'', address:'', gstin:'' });
+  const [invoiceNo, setInvoiceNo]             = useState('');
+  const [invoiceTaxType, setInvoiceTaxType]   = useState('intra'); // 'intra'=CGST+SGST | 'inter'=IGST
+  const [invoiceSearchQ, setInvoiceSearchQ]   = useState('');
+  const [invoiceHistory, setInvoiceHistory]   = useState([]);
+  const [showInvHistory, setShowInvHistory]   = useState(false);
+  const [invHistLoading, setInvHistLoading]   = useState(false);
 
   // ── Tech (My Stock) State ─────────────────────────────────────────────────
   const [myTechId, setMyTechId] = useState('');
@@ -734,7 +754,68 @@ export default function App() {
     sfTabMaterials.forEach(m => { v += (s[m.id] || 0) * m.costPrice; });
     return v;
   }
-
+ function consumptionLabel(usageCount) {
+    if (usageCount >= 20) return { label:'🔥 High',  color:'#DC2626', bg:'#FEF2F2', border:'#FECACA' };
+    if (usageCount  >= 8) return { label:'🔶 Mid',   color:'#D97706', bg:'#FFFBEB', border:'#FDE68A' };
+    if (usageCount  >= 1) return { label:'🔵 Low',   color:'#1D4ED8', bg:'#EFF6FF', border:'#BFDBFE' };
+    return                       { label:'⬜ New',   color:'#6B7280', bg:'#F9FAFB', border:'#E5E7EB' };
+  }
+ 
+  async function loadSpares(sfId) {
+    setSparesLoading(true);
+    try {
+      const r = await fetch('/api/inventory/spares?sfId=' + sfId);
+      const d = await r.json();
+      setSfSpares(d.items || []);
+    } catch(e) { setSpareMsg('Error loading spares'); }
+    setSparesLoading(false);
+  }
+ 
+  async function addSpare() {
+    const { materialCode, description, dp, mrp, stock } = newSpare;
+    if (!materialCode.trim() || !description.trim()) return setSpareMsg('Material code and description are required');
+    setSparesLoading(true);
+    try {
+      const r = await fetch('/api/inventory/spares', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sfId: sfTabSession.sfId, action:'addItem', materialCode, description, dp, mrp, stock })
+      });
+      const d = await r.json();
+      if (d.error) { setSpareMsg(d.error); setSparesLoading(false); return; }
+      setSfSpares(d.items || []);
+      setNewSpare({ materialCode:'', description:'', dp:'', mrp:'', stock:'' });
+      setShowAddSpare(false);
+      setSpareMsg('✅ Spare added!'); setTimeout(()=>setSpareMsg(''), 3000);
+    } catch(e) { setSpareMsg('Network error'); }
+    setSparesLoading(false);
+  }
+ 
+  async function confirmStockAdj() {
+    if (!stockAdjItem || !stockAdjQty) return;
+    try {
+      const r = await fetch('/api/inventory/spares', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sfId: sfTabSession.sfId, action:'updateStock', materialCode: stockAdjItem, qty: stockAdjQty, operation: stockAdjOp })
+      });
+      const d = await r.json();
+      if (d.error) return setSpareMsg(d.error);
+      setSfSpares(d.items || []);
+      setStockAdjItem(null); setStockAdjQty(''); setStockAdjOp('add');
+      setSpareMsg('✅ Stock updated!'); setTimeout(()=>setSpareMsg(''), 2000);
+    } catch(e) { setSpareMsg('Network error'); }
+  }
+ 
+  async function deleteSpare(materialCode) {
+    if (!confirm('Delete ' + materialCode + ' from spare catalog?')) return;
+    try {
+      const r = await fetch('/api/inventory/spares', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sfId: sfTabSession.sfId, action:'deleteItem', materialCode })
+      });
+      const d = await r.json();
+      setSfSpares(d.items || []);
+    } catch(e) { setSpareMsg('Error deleting'); }
+  }
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
@@ -1226,9 +1307,27 @@ export default function App() {
                 {masterMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{masterMsg}</div>}
 
                 {/* Sub-tabs — SFs tab added first */}
+                 {/* Sub-tabs */}
                 <div style={{display:'flex',gap:5,marginBottom:12,overflowX:'auto',paddingBottom:2}}>
-                  {[['sfs','🏢 SFs'],['stock','📊 Stock'],['technicians','👷 Techs'],['materials','🏷️ Prices'],['records','📁 Records']].map(([k,l])=>(
-                    <button key={k} onClick={()=>setMasterTab(k)} style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',background:masterTab===k?'white':'rgba(255,255,255,.5)',color:masterTab===k?'#E8001D':'#6B7280',boxShadow:masterTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
+                  {[
+                    ['stock',      '📊 Stock'],
+                    ['technicians','👷 Techs'],
+                    ['materials',  '🏷️ Prices'],
+                    ['spares',     '🔩 Spares'],
+                    ['records',    '📁 Records'],
+                  ].map(([k,l])=>(
+                    <button key={k} onClick={()=>{
+                      setSfSubTab(k);
+                      // lazy-load spares when tab first opened
+                      if (k==='spares' && sfSpares.length===0 && sfTabSession?.sfId) loadSpares(sfTabSession.sfId);
+                    }}
+                      style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',
+                        background: sfSubTab===k ? 'white':'rgba(255,255,255,.5)',
+                        color:      sfSubTab===k ? (k==='spares'?'#7C3AED':'#1D4ED8'):'#6B7280',
+                        boxShadow:  sfSubTab===k ? '0 2px 8px rgba(0,0,0,.1)':'none'
+                      }}>
+                      {l}
+                    </button>
                   ))}
                 </div>
 
@@ -1877,7 +1976,417 @@ export default function App() {
                     }} style={{width:'100%',marginTop:12,padding:'11px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:9,fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
                       <svg width="15" height="15" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/></svg>
                       Download My TCR Records (Excel)
+      
                     </button>
+                        {!sfTabDataLoading && sfSubTab==='spares' && (
+                  <div>
+                    {spareMsg && (
+                      <div style={{background: spareMsg.startsWith('✅')?'#F0FDF4':'#FFF0F0',
+                        border:'1px solid '+(spareMsg.startsWith('✅')?'#BBF7D0':'#FECACA'),
+                        borderRadius:8,padding:'8px 12px',fontSize:12,
+                        color: spareMsg.startsWith('✅')?'#166534':'#DC2626',marginBottom:10}}>
+                        {spareMsg}
+                      </div>
+                    )}
+ 
+                    {/* ── Invoice builder overlay ── */}
+                    {showInvoice ? (
+                      <div style={{background:'white',borderRadius:14,padding:16,boxShadow:'0 4px 20px rgba(0,0,0,.12)'}}>
+                        {/* Invoice header */}
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                          <div>
+                            <div style={{fontSize:14,fontWeight:700,color:'#1D4ED8'}}>🧾 New Tax Invoice</div>
+                            <div style={{fontSize:10,color:'#6B7280',marginTop:1}}>{sfTabSession?.sfName}</div>
+                          </div>
+                          <button onClick={()=>{setShowInvoice(false);setInvoiceItems([]);setInvoiceCust({name:'',mobile:'',address:'',gstin:''});setInvoiceNo('');}}
+                            style={{background:'#F3F4F6',border:'none',padding:'5px 10px',borderRadius:7,fontSize:11,cursor:'pointer',color:'#374151'}}>
+                            ✕ Cancel
+                          </button>
+                        </div>
+ 
+                        {/* Invoice No + Tax type */}
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+                          <div>
+                            <label style={{fontSize:9,fontWeight:700,color:'#7C3AED',textTransform:'uppercase',display:'block',marginBottom:3}}>Invoice No. (optional)</label>
+                            <input value={invoiceNo} onChange={e=>setInvoiceNo(e.target.value)}
+                              placeholder={'INV-' + (sfTabSession?.sfId||'') + '-XXXXXX'}
+                              style={{width:'100%',padding:'7px 9px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:11,outline:'none',fontFamily:'monospace'}}/>
+                          </div>
+                          <div>
+                            <label style={{fontSize:9,fontWeight:700,color:'#7C3AED',textTransform:'uppercase',display:'block',marginBottom:3}}>GST Type</label>
+                            <select value={invoiceTaxType} onChange={e=>setInvoiceTaxType(e.target.value)}
+                              style={{width:'100%',padding:'7px 9px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:11,outline:'none',background:'white'}}>
+                              <option value="intra">Intra-State (CGST + SGST)</option>
+                              <option value="inter">Inter-State (IGST)</option>
+                            </select>
+                          </div>
+                        </div>
+ 
+                        {/* Customer details */}
+                        <div style={{background:'#F0F7FF',borderRadius:10,padding:12,marginBottom:12}}>
+                          <div style={{fontSize:11,fontWeight:700,color:'#1E3A8A',marginBottom:8}}>👤 Customer Details</div>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:7}}>
+                            <div>
+                              <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:2}}>Name *</label>
+                              <input value={invoiceCust.name} onChange={e=>setInvoiceCust(p=>({...p,name:e.target.value}))}
+                                placeholder="Customer name"
+                                style={{width:'100%',padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:11,outline:'none'}}/>
+                            </div>
+                            <div>
+                              <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:2}}>Mobile</label>
+                              <input value={invoiceCust.mobile} onChange={e=>setInvoiceCust(p=>({...p,mobile:e.target.value}))}
+                                placeholder="10-digit mobile"
+                                style={{width:'100%',padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:11,outline:'none',fontFamily:'monospace'}}/>
+                            </div>
+                          </div>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
+                            <div>
+                              <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:2}}>GSTIN (optional)</label>
+                              <input value={invoiceCust.gstin} onChange={e=>setInvoiceCust(p=>({...p,gstin:e.target.value.toUpperCase()}))}
+                                placeholder="15-char GSTIN"
+                                style={{width:'100%',padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:11,outline:'none',fontFamily:'monospace',letterSpacing:1}}/>
+                            </div>
+                            <div>
+                              <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:2}}>Address</label>
+                              <input value={invoiceCust.address} onChange={e=>setInvoiceCust(p=>({...p,address:e.target.value}))}
+                                placeholder="Billing address"
+                                style={{width:'100%',padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:11,outline:'none'}}/>
+                            </div>
+                          </div>
+                        </div>
+ 
+                        {/* Item search / add */}
+                        <div style={{marginBottom:10}}>
+                          <label style={{fontSize:9,fontWeight:700,color:'#7C3AED',textTransform:'uppercase',display:'block',marginBottom:4}}>🔍 Add Spare to Invoice</label>
+                          <input value={invoiceSearchQ} onChange={e=>setInvoiceSearchQ(e.target.value)}
+                            placeholder="Search by code or description…"
+                            style={{width:'100%',padding:'8px 10px',border:'1.5px solid #DDD6FE',borderRadius:8,fontSize:12,outline:'none'}}/>
+                          {invoiceSearchQ.trim() && (
+                            <div style={{border:'1px solid #E5E7EB',borderRadius:8,marginTop:4,maxHeight:160,overflowY:'auto',boxShadow:'0 4px 12px rgba(0,0,0,.08)'}}>
+                              {sfSpares.filter(s =>
+                                s.materialCode.toLowerCase().includes(invoiceSearchQ.toLowerCase()) ||
+                                s.description.toLowerCase().includes(invoiceSearchQ.toLowerCase())
+                              ).map(s=>(
+                                <div key={s.materialCode} onClick={()=>addInvoiceItem(s)}
+                                  style={{padding:'9px 12px',borderBottom:'1px solid #F3F4F6',cursor:'pointer',background:'white',display:'flex',justifyContent:'space-between',alignItems:'center'}}
+                                  onMouseEnter={e=>e.currentTarget.style.background='#F0F7FF'}
+                                  onMouseLeave={e=>e.currentTarget.style.background='white'}>
+                                  <div>
+                                    <span style={{fontFamily:'monospace',fontSize:10,color:'#7C3AED',marginRight:6}}>{s.materialCode}</span>
+                                    <span style={{fontSize:11,color:'#111827'}}>{s.description}</span>
+                                  </div>
+                                  <span style={{fontSize:11,fontWeight:600,color:'#1D4ED8',fontFamily:'monospace'}}>₹{fmtINR(s.mrp)}</span>
+                                </div>
+                              ))}
+                              {sfSpares.filter(s =>
+                                s.materialCode.toLowerCase().includes(invoiceSearchQ.toLowerCase()) ||
+                                s.description.toLowerCase().includes(invoiceSearchQ.toLowerCase())
+                              ).length === 0 && (
+                                <div style={{padding:12,textAlign:'center',color:'#9CA3AF',fontSize:11}}>No matching spare parts</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+ 
+                        {/* Line items table */}
+                        {invoiceItems.length > 0 && (
+                          <div style={{marginBottom:12}}>
+                            <div style={{fontSize:11,fontWeight:700,color:'#374151',marginBottom:6}}>📋 Invoice Items</div>
+                            <div style={{background:'#1E3A8A',borderRadius:'8px 8px 0 0',display:'grid',gridTemplateColumns:'1fr 50px 60px 50px 20px',gap:4,padding:'6px 8px'}}>
+                              {['Description','Qty','Rate','Disc.',''].map((h,i)=>(
+                                <div key={i} style={{fontSize:9,fontWeight:600,color:'rgba(255,255,255,.7)',textAlign:i===1||i===2||i===3?'center':'left'}}>{h}</div>
+                              ))}
+                            </div>
+                            {invoiceItems.map(item=>(
+                              <div key={item.materialCode}
+                                style={{display:'grid',gridTemplateColumns:'1fr 50px 60px 50px 20px',gap:4,padding:'7px 8px',borderBottom:'1px solid #F3F4F6',background:'white',alignItems:'center'}}>
+                                <div>
+                                  <div style={{fontSize:10,fontFamily:'monospace',color:'#7C3AED'}}>{item.materialCode}</div>
+                                  <div style={{fontSize:11,color:'#111827',lineHeight:1.3}}>{item.description}</div>
+                                </div>
+                                <input type="number" min="1" value={item.qty}
+                                  onChange={e=>updateInvoiceLine(item.materialCode,'qty',e.target.value)}
+                                  style={{width:'100%',padding:'4px 4px',border:'1.5px solid #E5E7EB',borderRadius:5,fontSize:11,textAlign:'center',outline:'none',fontFamily:'monospace'}}/>
+                                <input type="number" min="0" value={item.rate}
+                                  onChange={e=>updateInvoiceLine(item.materialCode,'rate',e.target.value)}
+                                  style={{width:'100%',padding:'4px 4px',border:'1.5px solid #E5E7EB',borderRadius:5,fontSize:11,textAlign:'center',outline:'none',fontFamily:'monospace'}}/>
+                                <input type="number" min="0" value={item.discount}
+                                  onChange={e=>updateInvoiceLine(item.materialCode,'discount',e.target.value)}
+                                  placeholder="0"
+                                  style={{width:'100%',padding:'4px 4px',border:'1.5px solid #E5E7EB',borderRadius:5,fontSize:11,textAlign:'center',outline:'none',fontFamily:'monospace'}}/>
+                                <button onClick={()=>removeInvoiceLine(item.materialCode)}
+                                  style={{background:'none',border:'none',color:'#DC2626',fontSize:14,cursor:'pointer',padding:0,lineHeight:1}}>×</button>
+                              </div>
+                            ))}
+ 
+                            {/* Totals summary */}
+                            {(()=>{
+                              const {subtotal,taxAmt,total}=calcInvoiceTotals();
+                              return (
+                                <div style={{background:'#F8FAFF',border:'1px solid #DBEAFE',borderRadius:'0 0 8px 8px',padding:'10px 12px'}}>
+                                  <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#374151',marginBottom:3}}>
+                                    <span>Sub Total</span><span style={{fontFamily:'monospace',fontWeight:600}}>₹{fmtINR(subtotal)}</span>
+                                  </div>
+                                  {invoiceTaxType==='intra' ? (
+                                    <>
+                                      <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#374151',marginBottom:3}}>
+                                        <span>CGST @ 9%</span><span style={{fontFamily:'monospace',fontWeight:600}}>₹{fmtINR(Math.round(taxAmt/2))}</span>
+                                      </div>
+                                      <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#374151',marginBottom:6}}>
+                                        <span>SGST @ 9%</span><span style={{fontFamily:'monospace',fontWeight:600}}>₹{fmtINR(Math.round(taxAmt/2))}</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#374151',marginBottom:6}}>
+                                      <span>IGST @ 18%</span><span style={{fontFamily:'monospace',fontWeight:600}}>₹{fmtINR(taxAmt)}</span>
+                                    </div>
+                                  )}
+                                  <div style={{display:'flex',justifyContent:'space-between',fontSize:14,fontWeight:700,color:'#1D4ED8',borderTop:'1px solid #BFDBFE',paddingTop:6}}>
+                                    <span>TOTAL</span><span style={{fontFamily:'monospace'}}>₹{fmtINR(total)}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+ 
+                        {/* Generate button */}
+                        <button onClick={generateInvoicePdf}
+                          style={{width:'100%',padding:'12px',background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'white',border:'none',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                          <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/></svg>
+                          Generate & Download Tax Invoice PDF
+                        </button>
+                      </div>
+ 
+                    ) : (
+                      /* ── Spare Catalog View ── */
+                      <>
+                        {/* Action bar */}
+                        <div style={{display:'flex',gap:8,marginBottom:12}}>
+                          <div style={{flex:1,position:'relative'}}>
+                            <input value={sparesSearch} onChange={e=>setSparesSearch(e.target.value)}
+                              placeholder="🔍  Search material code or description…"
+                              style={{width:'100%',padding:'10px 12px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:12,outline:'none',background:'white'}}/>
+                            {sparesSearch && (
+                              <button onClick={()=>setSparesSearch('')}
+                                style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'#9CA3AF',fontSize:14}}>×</button>
+                            )}
+                          </div>
+                          <button onClick={()=>setShowAddSpare(p=>!p)}
+                            style={{flexShrink:0,padding:'10px 12px',background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'white',border:'none',borderRadius:10,fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                            {showAddSpare ? '✕ Close' : '+ Add'}
+                          </button>
+                        </div>
+ 
+                        {/* Add spare form */}
+                        {showAddSpare && (
+                          <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 10px rgba(124,58,237,.12)',border:'1.5px solid #DDD6FE'}}>
+                            <div style={{fontSize:12,fontWeight:700,color:'#7C3AED',marginBottom:10}}>➕ Add New Spare Part</div>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Material Code *</label>
+                                <input value={newSpare.materialCode} onChange={e=>setNewSpare(p=>({...p,materialCode:e.target.value.toUpperCase()}))}
+                                  placeholder="e.g. AC-COMP-001"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none',fontFamily:'monospace',letterSpacing:1}}/>
+                              </div>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Stock Qty</label>
+                                <input type="number" value={newSpare.stock} onChange={e=>setNewSpare(p=>({...p,stock:e.target.value}))}
+                                  placeholder="Opening stock"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none',fontFamily:'monospace'}}/>
+                              </div>
+                            </div>
+                            <div style={{marginBottom:8}}>
+                              <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Description *</label>
+                              <input value={newSpare.description} onChange={e=>setNewSpare(p=>({...p,description:e.target.value}))}
+                                placeholder="e.g. Rotary Compressor 1.5T R22"
+                                style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none'}}/>
+                            </div>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>DP (Dealer Price) ₹</label>
+                                <input type="number" value={newSpare.dp} onChange={e=>setNewSpare(p=>({...p,dp:e.target.value}))}
+                                  placeholder="0.00"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none',fontFamily:'monospace'}}/>
+                              </div>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>MRP ₹</label>
+                                <input type="number" value={newSpare.mrp} onChange={e=>setNewSpare(p=>({...p,mrp:e.target.value}))}
+                                  placeholder="0.00"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none',fontFamily:'monospace'}}/>
+                              </div>
+                            </div>
+                            <button onClick={addSpare} disabled={sparesLoading}
+                              style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',opacity:sparesLoading?.6:1}}>
+                              {sparesLoading ? 'Saving…' : 'Save Spare Part'}
+                            </button>
+                          </div>
+                        )}
+ 
+                        {/* Stats bar */}
+                        {sfSpares.length > 0 && (
+                          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:12}}>
+                            {[
+                              ['Total Parts', sfSpares.length, '#7C3AED', '#F3EEFF'],
+                              ['Zero Stock',  sfSpares.filter(s=>s.stock===0).length, '#DC2626', '#FFF0F0'],
+                              ['🔥 High',     sfSpares.filter(s=>s.usageCount>=20).length, '#DC2626', '#FEF2F2'],
+                              ['🔶 Mid',      sfSpares.filter(s=>s.usageCount>=8&&s.usageCount<20).length, '#D97706', '#FFFBEB'],
+                            ].map(([label,count,color,bg])=>(
+                              <div key={label} style={{background:bg,borderRadius:8,padding:'8px 6px',textAlign:'center'}}>
+                                <div style={{fontSize:16,fontWeight:700,color,fontFamily:'monospace'}}>{count}</div>
+                                <div style={{fontSize:9,fontWeight:600,color,marginTop:1}}>{label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+ 
+                        {/* Spare list */}
+                        {sparesLoading && <div style={{textAlign:'center',padding:32,color:'#9CA3AF'}}>Loading spares…</div>}
+                        {!sparesLoading && sfSpares.length === 0 && (
+                          <div style={{background:'white',borderRadius:12,padding:32,textAlign:'center',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                            <div style={{fontSize:36,marginBottom:8}}>🔩</div>
+                            <div style={{fontSize:13,fontWeight:600,color:'#374151',marginBottom:4}}>No spare parts yet</div>
+                            <div style={{fontSize:11,color:'#9CA3AF'}}>Click "+ Add" to upload your first spare part</div>
+                          </div>
+                        )}
+ 
+                        {!sparesLoading && sfSpares.filter(s =>
+                          !sparesSearch.trim() ||
+                          s.materialCode.toLowerCase().includes(sparesSearch.toLowerCase()) ||
+                          s.description.toLowerCase().includes(sparesSearch.toLowerCase())
+                        ).map(s => {
+                          const cLabel = consumptionLabel(s.usageCount || 0);
+                          const isAdj  = stockAdjItem === s.materialCode;
+                          const zero   = s.stock === 0;
+                          return (
+                            <div key={s.materialCode}
+                              style={{background:'white',borderRadius:11,marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,.06)',overflow:'hidden',
+                                border: zero ? '1.5px solid #FECACA' : '1.5px solid transparent'}}>
+ 
+                              {/* Main row */}
+                              <div style={{padding:'10px 12px',display:'flex',alignItems:'flex-start',gap:10}}>
+                                <div style={{flex:1,minWidth:0}}>
+                                  {/* Code + consumption badge */}
+                                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
+                                    <span style={{fontFamily:'monospace',fontSize:10,fontWeight:700,color:'#7C3AED',background:'#F3EEFF',padding:'2px 6px',borderRadius:4}}>
+                                      {s.materialCode}
+                                    </span>
+                                    <span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,
+                                      background: cLabel.bg, color: cLabel.color, border:'1px solid '+cLabel.border}}>
+                                      {cLabel.label}
+                                    </span>
+                                    {zero && <span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA'}}>⚠️ No Stock</span>}
+                                  </div>
+                                  <div style={{fontSize:12,fontWeight:600,color:'#111827',marginBottom:4,lineHeight:1.35}}>{s.description}</div>
+                                  {/* Price row */}
+                                  <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                                    <span style={{fontSize:10,color:'#6B7280'}}>DP: <b style={{color:'#374151',fontFamily:'monospace'}}>₹{fmtINR(s.dp)}</b></span>
+                                    <span style={{fontSize:10,color:'#6B7280'}}>MRP: <b style={{color:'#1D4ED8',fontFamily:'monospace'}}>₹{fmtINR(s.mrp)}</b></span>
+                                    <span style={{fontSize:10,color:'#6B7280'}}>Used: <b style={{color:'#374151'}}>{s.usageCount||0} time{(s.usageCount||0)!==1?'s':''}</b></span>
+                                  </div>
+                                </div>
+                                {/* Stock qty */}
+                                <div style={{textAlign:'center',minWidth:56,flexShrink:0}}>
+                                  <div style={{fontSize:20,fontWeight:700,fontFamily:'monospace',color:zero?'#DC2626':'#16A34A',lineHeight:1}}>
+                                    {zero ? '0' : s.stock}
+                                  </div>
+                                  <div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>in stock</div>
+                                </div>
+                              </div>
+ 
+                              {/* Stock adjustment panel (inline) */}
+                              {isAdj && (
+                                <div style={{background:'#F8F5FF',borderTop:'1px solid #EDE9FE',padding:'10px 12px'}}>
+                                  <div style={{fontSize:10,fontWeight:700,color:'#7C3AED',marginBottom:7}}>Adjust Stock for {s.materialCode}</div>
+                                  <div style={{display:'flex',gap:6,marginBottom:8}}>
+                                    {[['add','➕ Add'],['subtract','➖ Remove'],['set','📌 Set']].map(([op,lbl])=>(
+                                      <button key={op} onClick={()=>setStockAdjOp(op)}
+                                        style={{flex:1,padding:'5px 4px',border:'1.5px solid '+(stockAdjOp===op?'#7C3AED':'#E5E7EB'),
+                                          borderRadius:7,fontSize:10,fontWeight:600,cursor:'pointer',
+                                          background:stockAdjOp===op?'#7C3AED':'white',color:stockAdjOp===op?'white':'#374151'}}>
+                                        {lbl}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div style={{display:'flex',gap:7}}>
+                                    <input type="number" min="0" value={stockAdjQty} onChange={e=>setStockAdjQty(e.target.value)}
+                                      placeholder="Quantity"
+                                      style={{flex:1,padding:'7px 10px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:13,outline:'none',fontFamily:'monospace'}}/>
+                                    <button onClick={confirmStockAdj}
+                                      style={{padding:'7px 14px',background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'white',border:'none',borderRadius:7,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                                      Save
+                                    </button>
+                                    <button onClick={()=>{setStockAdjItem(null);setStockAdjQty('');}}
+                                      style={{padding:'7px 10px',background:'#F3F4F6',border:'none',borderRadius:7,fontSize:12,cursor:'pointer',color:'#374151'}}>
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+ 
+                              {/* Action buttons */}
+                              <div style={{borderTop:'1px solid #F3F4F6',display:'flex'}}>
+                                <button onClick={()=>{setStockAdjItem(isAdj?null:s.materialCode);setStockAdjQty('');setStockAdjOp('add');}}
+                                  style={{flex:1,padding:'7px 4px',background:'none',border:'none',fontSize:10,fontWeight:600,color:'#7C3AED',cursor:'pointer',borderRight:'1px solid #F3F4F6'}}>
+                                  📦 Stock
+                                </button>
+                                <button onClick={()=>{addInvoiceItem(s);setShowInvoice(true);}}
+                                  style={{flex:1,padding:'7px 4px',background:'none',border:'none',fontSize:10,fontWeight:600,color:'#1D4ED8',cursor:'pointer',borderRight:'1px solid #F3F4F6'}}>
+                                  🧾 Invoice
+                                </button>
+                                <button onClick={()=>deleteSpare(s.materialCode)}
+                                  style={{flex:1,padding:'7px 4px',background:'none',border:'none',fontSize:10,fontWeight:600,color:'#DC2626',cursor:'pointer'}}>
+                                  🗑️ Delete
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+ 
+                        {/* Bottom actions */}
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:12}}>
+                          <button onClick={()=>loadSpares(sfTabSession.sfId)} disabled={sparesLoading}
+                            style={{padding:'10px',background:'#F3F4F6',border:'1.5px solid #E5E7EB',borderRadius:9,fontSize:11,fontWeight:600,color:'#374151',cursor:'pointer'}}>
+                            ↻ Refresh
+                          </button>
+                          <button onClick={()=>setShowInvoice(true)}
+                            style={{padding:'10px',background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'white',border:'none',borderRadius:9,fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                            🧾 New Invoice
+                          </button>
+                        </div>
+ 
+                        {/* Invoice history */}
+                        <div style={{marginTop:10}}>
+                          <button onClick={async()=>{setShowInvHistory(p=>!p);if(!showInvHistory)await loadInvoiceHistory();}}
+                            style={{width:'100%',padding:'9px',background:'white',border:'1.5px solid #E5E7EB',borderRadius:9,fontSize:11,fontWeight:600,color:'#374151',cursor:'pointer'}}>
+                            {showInvHistory ? '▲ Hide' : '📋 Show'} Invoice History
+                          </button>
+                          {showInvHistory && (
+                            <div style={{background:'white',borderRadius:10,marginTop:6,boxShadow:'0 2px 8px rgba(0,0,0,.06)',overflow:'hidden'}}>
+                              {invHistLoading && <div style={{padding:20,textAlign:'center',color:'#9CA3AF',fontSize:12}}>Loading…</div>}
+                              {!invHistLoading && invoiceHistory.length===0 && (
+                                <div style={{padding:20,textAlign:'center',color:'#9CA3AF',fontSize:12}}>No invoices generated yet</div>
+                              )}
+                              {!invHistLoading && invoiceHistory.map(inv=>(
+                                <div key={inv.id} style={{padding:'10px 14px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                  <div>
+                                    <div style={{fontSize:11,fontWeight:700,fontFamily:'monospace',color:'#7C3AED'}}>{inv.invoiceNo}</div>
+                                    <div style={{fontSize:10,color:'#374151',marginTop:1}}>{inv.customer?.name}</div>
+                                    <div style={{fontSize:9,color:'#9CA3AF'}}>{inv.date}</div>
+                                  </div>
+                                  <div style={{textAlign:'right'}}>
+                                    <div style={{fontSize:12,fontWeight:700,fontFamily:'monospace',color:'#1D4ED8'}}>₹{fmtINR(inv.total)}</div>
+                                    <div style={{fontSize:9,color:'#9CA3AF'}}>{inv.items?.length} item{inv.items?.length!==1?'s':''}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                   </>);
                 })()}
               </>
