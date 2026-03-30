@@ -105,6 +105,24 @@ export default function App() {
   const [techErr, setTechErr] = useState('');
   const [techLoading, setTechLoading] = useState(false);
 
+  // ── Service Centre Tab State ───────────────────────────────────────────────
+  const [sfTabAuthed, setSfTabAuthed] = useState(false);
+  const [sfTabSession, setSfTabSession] = useState(null); // {sfId, sfName}
+  const [sfTabIdInput, setSfTabIdInput] = useState('');
+  const [sfTabPwdInput, setSfTabPwdInput] = useState('');
+  const [sfTabErr, setSfTabErr] = useState('');
+  const [sfTabLoading, setSfTabLoading] = useState(false);
+  const [sfTabDataLoading, setSfTabDataLoading] = useState(false);
+  const [sfSubTab, setSfSubTab] = useState('stock');
+  const [sfTabTechs, setSfTabTechs] = useState([]);
+  const [sfTabMaterials, setSfTabMaterials] = useState([]);
+  const [sfTabEditMats, setSfTabEditMats] = useState([]);
+  const [sfTabStock, setSfTabStock] = useState({});
+  const [sfTabMsg, setSfTabMsg] = useState('');
+  const [sfTabNewTechId, setSfTabNewTechId] = useState('');
+  const [sfTabNewTechName, setSfTabNewTechName] = useState('');
+  const [sfTabNewTechPwd, setSfTabNewTechPwd] = useState('');
+
   const field = (k, v) => setF(p => ({...p, [k]: v}));
 
   // Fetch SF-scoped tech list after login
@@ -596,6 +614,108 @@ export default function App() {
     const json = await res.json(); setTechData(json); setTechLoading(false);
   }
 
+  // ── Service Centre Tab Functions ───────────────────────────────────────────
+  async function sfTabLogin() {
+    if (!sfTabIdInput.trim() || !sfTabPwdInput.trim()) return setSfTabErr('Enter SF ID and password');
+    setSfTabLoading(true); setSfTabErr('');
+    try {
+      const res = await fetch('/api/admin/sfs', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'sfLogin', sfId: sfTabIdInput.trim().toUpperCase(), sfPassword: sfTabPwdInput.trim() })
+      });
+      const json = await res.json();
+      if (!res.ok) { setSfTabErr(json.error || 'Invalid SF ID or password'); setSfTabLoading(false); return; }
+      setSfTabSession({ sfId: json.sfId, sfName: json.sfName });
+      setSfTabAuthed(true);
+      loadSfTabData(json.sfId);
+    } catch(e) { setSfTabErr('Network error'); }
+    setSfTabLoading(false);
+  }
+
+  async function loadSfTabData(sfId) {
+    setSfTabDataLoading(true);
+    try {
+      // Load techs scoped to this SF
+      const r1 = await fetch('/api/inventory/technicians?sfId=' + sfId);
+      const d1 = await r1.json();
+      const techArr = Array.isArray(d1) ? d1 : [];
+      setSfTabTechs(techArr);
+      // Load materials & prices
+      const r2 = await fetch('/api/inventory/stock?password=Project@1');
+      const d2 = await r2.json();
+      setSfTabMaterials(d2.materials || []);
+      setSfTabEditMats(d2.materials || []);
+      // Load stock for each tech in this SF
+      const stockObj = {};
+      await Promise.all(techArr.map(async t => {
+        try {
+          const r = await fetch('/api/inventory/stock?techId=' + t.id);
+          const d = await r.json();
+          if (d.stock) stockObj[t.id] = d.stock;
+        } catch(e) {}
+      }));
+      setSfTabStock(stockObj);
+    } catch(e) { setSfTabMsg('Error loading data'); }
+    setSfTabDataLoading(false);
+  }
+
+  async function sfTabAddTech() {
+    if (!sfTabNewTechId.trim() || !sfTabNewTechName.trim() || !sfTabNewTechPwd.trim())
+      return setSfTabMsg('Fill Tech ID, Name and Password');
+    const res = await fetch('/api/admin/sfs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        password: 'Project@1', action: 'addTech',
+        sfId: sfTabSession.sfId,
+        techId: sfTabNewTechId.trim().toUpperCase(),
+        techName: sfTabNewTechName.trim(),
+        techPassword: sfTabNewTechPwd.trim()
+      })
+    });
+    const json = await res.json();
+    if (json.error) return setSfTabMsg(json.error);
+    setSfTabNewTechId(''); setSfTabNewTechName(''); setSfTabNewTechPwd('');
+    setSfTabMsg('Technician added!'); setTimeout(() => setSfTabMsg(''), 3000);
+    loadSfTabData(sfTabSession.sfId);
+  }
+
+  async function sfTabRemoveTech(techId) {
+    if (!confirm('Remove technician ' + techId + ' from ' + sfTabSession.sfId + '?')) return;
+    const res = await fetch('/api/admin/sfs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: 'Project@1', action: 'removeTech', sfId: sfTabSession.sfId, techId })
+    });
+    const json = await res.json();
+    if (json.error) return setSfTabMsg(json.error);
+    setSfTabMsg('Technician removed'); setTimeout(() => setSfTabMsg(''), 3000);
+    loadSfTabData(sfTabSession.sfId);
+  }
+
+  async function sfTabSaveMaterialPrices() {
+    const res = await fetch('/api/inventory/materials', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: 'Project@1', materials: sfTabEditMats })
+    });
+    const json = await res.json();
+    if (json.error) return setSfTabMsg(json.error);
+    setSfTabMaterials(sfTabEditMats);
+    setSfTabMsg('Prices saved!'); setTimeout(() => setSfTabMsg(''), 3000);
+  }
+
+  function sfTabLogout() {
+    setSfTabAuthed(false); setSfTabSession(null);
+    setSfTabIdInput(''); setSfTabPwdInput(''); setSfTabErr('');
+    setSfTabTechs([]); setSfTabMaterials([]); setSfTabEditMats([]);
+    setSfTabStock({}); setSfTabMsg(''); setSfSubTab('stock');
+    setSfTabNewTechId(''); setSfTabNewTechName(''); setSfTabNewTechPwd('');
+  }
+
+  function sfTabGetStockVal(tid) {
+    const s = sfTabStock[tid] || {}; let v = 0;
+    sfTabMaterials.forEach(m => { v += (s[m.id] || 0) * m.costPrice; });
+    return v;
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
@@ -703,6 +823,9 @@ export default function App() {
         </button>
         <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}>
           <span className="tab-icon">📦</span>Master
+        </button>
+        <button className={"tab-btn"+(mainTab==='sf'?' act':'')} onClick={()=>setMainTab('sf')}>
+          <span className="tab-icon">🏢</span>SF
         </button>
         <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}>
           <span className="tab-icon">🔧</span>My Stock
@@ -1319,6 +1442,239 @@ export default function App() {
                         </button>
                       ))}
                       {techs.length===0&&<div style={{color:'#9CA3AF',fontSize:12,textAlign:'center',padding:16}}>No technicians added yet</div>}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════ SERVICE CENTRE TAB ═══ */}
+      {mainTab==='sf' && (
+        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
+          <div style={{maxWidth:720,margin:'0 auto'}}>
+            {!sfTabAuthed ? (
+              /* ── SF Login ── */
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+                <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:380,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
+                  <div style={{fontSize:36,marginBottom:12}}>🏢</div>
+                  <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>Service Centre Login</div>
+                  <div style={{fontSize:12,color:'#6B7280',marginBottom:24}}>Enter your SF ID and password</div>
+                  <input
+                    value={sfTabIdInput}
+                    onChange={e=>setSfTabIdInput(e.target.value.toUpperCase())}
+                    onKeyDown={e=>e.key==='Enter'&&sfTabLogin()}
+                    placeholder="SF ID  (e.g. SF001)"
+                    style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:13,marginBottom:8,outline:'none',textAlign:'center',letterSpacing:2,fontFamily:'monospace'}}
+                  />
+                  <input
+                    type="password"
+                    value={sfTabPwdInput}
+                    onChange={e=>setSfTabPwdInput(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&sfTabLogin()}
+                    placeholder="Password"
+                    style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center'}}
+                  />
+                  {sfTabErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{sfTabErr}</div>}
+                  <button onClick={sfTabLogin} disabled={sfTabLoading}
+                    style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',opacity:sfTabLoading?.6:1}}>
+                    {sfTabLoading ? 'Verifying…' : 'Login'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* ── SF Dashboard ── */
+              <>
+                {/* Header */}
+                <div style={{background:'linear-gradient(135deg,#1D4ED8,#1E40AF)',borderRadius:14,padding:'14px 16px',color:'white',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700}}>🏢 {sfTabSession?.sfName}</div>
+                    <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginTop:2,fontFamily:'monospace'}}>ID: {sfTabSession?.sfId}</div>
+                  </div>
+                  <button onClick={sfTabLogout} style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',color:'white',padding:'5px 12px',borderRadius:8,fontSize:11,cursor:'pointer'}}>
+                    Logout
+                  </button>
+                </div>
+
+                {sfTabMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{sfTabMsg}</div>}
+
+                {/* Sub-tabs */}
+                <div style={{display:'flex',gap:5,marginBottom:12,overflowX:'auto',paddingBottom:2}}>
+                  {[['stock','📊 Stock'],['technicians','👷 Techs'],['materials','🏷️ Prices'],['records','📁 Records']].map(([k,l])=>(
+                    <button key={k} onClick={()=>setSfSubTab(k)} style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',background:sfSubTab===k?'white':'rgba(255,255,255,.5)',color:sfSubTab===k?'#1D4ED8':'#6B7280',boxShadow:sfSubTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
+                  ))}
+                </div>
+
+                {sfTabDataLoading&&<div style={{textAlign:'center',padding:40,color:'#6B7280'}}>Loading…</div>}
+
+                {/* ─── STOCK SUB-TAB ─── */}
+                {!sfTabDataLoading&&sfSubTab==='stock'&&(
+                  <div>
+                    <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)',marginBottom:12}}>
+                      <div style={{background:'#1E40AF',padding:'8px 14px',display:'grid',gridTemplateColumns:'1fr 80px 80px 80px'}}>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.7)'}}>TECHNICIAN</div>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.7)',textAlign:'center'}}>ITEMS</div>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.7)',textAlign:'center'}}>ZERO</div>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.7)',textAlign:'right'}}>VALUE</div>
+                      </div>
+                      {sfTabTechs.length===0&&<div style={{padding:20,textAlign:'center',color:'#9CA3AF',fontSize:12}}>No technicians in this SF yet</div>}
+                      {sfTabTechs.map(t=>{
+                        const s=sfTabStock[t.id]||{};
+                        const zeroCount=(sfTabMaterials||[]).filter(m=>(s[m.id]||0)===0).length;
+                        const val=sfTabGetStockVal(t.id);
+                        return(
+                          <div key={t.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 80px 80px',padding:'10px 14px',borderBottom:'1px solid #F3F4F6',alignItems:'center'}}>
+                            <div>
+                              <div style={{fontSize:12,fontWeight:600,color:'#111827'}}>{t.name}</div>
+                              <div style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>{t.id}</div>
+                            </div>
+                            <div style={{textAlign:'center',fontSize:12,fontWeight:600,color:'#374151'}}>{sfTabMaterials.length}</div>
+                            <div style={{textAlign:'center'}}>
+                              {zeroCount>0
+                                ?<span style={{fontSize:11,fontWeight:700,color:'#DC2626'}}>⚠️ {zeroCount}</span>
+                                :<span style={{fontSize:11,fontWeight:700,color:'#16A34A'}}>✓</span>}
+                            </div>
+                            <div style={{textAlign:'right',fontFamily:'monospace',fontSize:11,fontWeight:600,color:'#1D4ED8'}}>₹{fmtINR(val)}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Per-tech stock detail cards */}
+                    {sfTabTechs.map(t=>{
+                      const s=sfTabStock[t.id]||{};
+                      const zi=(sfTabMaterials||[]).filter(m=>(s[m.id]||0)===0);
+                      return(
+                        <div key={t.id} style={{background:'white',borderRadius:12,marginBottom:10,boxShadow:'0 2px 8px rgba(0,0,0,.06)',overflow:'hidden'}}>
+                          <div style={{background:'#1E3A8A',padding:'8px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <div style={{fontSize:12,fontWeight:700,color:'white'}}>🔧 {t.name}</div>
+                            <div style={{fontSize:10,color:'rgba(255,255,255,.6)',fontFamily:'monospace'}}>{t.id}</div>
+                          </div>
+                          {zi.length>0&&(
+                            <div style={{background:'#FEF2F2',padding:'6px 12px',borderBottom:'1px solid #FECACA'}}>
+                              <div style={{fontSize:11,color:'#DC2626',fontWeight:600}}>⚠️ Zero stock: {zi.map(m=>m.name+(m.sub?' ('+m.sub+')':'')).join(', ')}</div>
+                            </div>
+                          )}
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'6px 12px',background:'#F9FAFB',borderBottom:'1px solid #F3F4F6'}}>
+                            <div style={{fontSize:9,fontWeight:700,color:'#6B7280',textTransform:'uppercase'}}>Material</div>
+                            <div style={{fontSize:9,fontWeight:700,color:'#6B7280',textTransform:'uppercase',textAlign:'center'}}>Stock</div>
+                            <div style={{fontSize:9,fontWeight:700,color:'#6B7280',textTransform:'uppercase',textAlign:'right'}}>Unit</div>
+                          </div>
+                          {(sfTabMaterials||[]).map(m=>{
+                            const qty=(s[m.id]||0); const zero=qty===0;
+                            return(
+                              <div key={m.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 12px',borderBottom:'1px solid #F9FAFB',background:zero?'#FFF5F5':'white',alignItems:'center'}}>
+                                <div>
+                                  <div style={{fontSize:11,fontWeight:500,color:zero?'#DC2626':'#111827'}}>{m.name}</div>
+                                  {m.sub&&<div style={{fontSize:10,color:'#6B7280'}}>{m.sub}</div>}
+                                </div>
+                                <div style={{textAlign:'center',fontFamily:'monospace',fontSize:13,fontWeight:700,color:zero?'#DC2626':'#16A34A'}}>{zero?'⚠️ 0':qty}</div>
+                                <div style={{textAlign:'right',fontSize:11,color:'#6B7280'}}>{m.unit}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                    <button onClick={()=>loadSfTabData(sfTabSession.sfId)} style={{width:'100%',padding:'10px',background:'#F3F4F6',border:'1.5px solid #E5E7EB',borderRadius:9,fontSize:12,fontWeight:600,color:'#374151',cursor:'pointer',marginTop:4}}>
+                      ↻ Refresh Stock
+                    </button>
+                  </div>
+                )}
+
+                {/* ─── TECHNICIANS SUB-TAB ─── */}
+                {!sfTabDataLoading&&sfSubTab==='technicians'&&(
+                  <div>
+                    {/* Add technician card */}
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>➕ Add Technician to Your SF</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech ID</label>
+                          <input value={sfTabNewTechId} onChange={e=>setSfTabNewTechId(e.target.value)} placeholder="e.g. TECH001"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Full Name</label>
+                          <input value={sfTabNewTechName} onChange={e=>setSfTabNewTechName(e.target.value)} placeholder="Name"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Password</label>
+                          <input value={sfTabNewTechPwd} onChange={e=>setSfTabNewTechPwd(e.target.value)} placeholder="Password"
+                            style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                        </div>
+                      </div>
+                      <button onClick={sfTabAddTech} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#1D4ED8,#1E40AF)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                        Add Technician
+                      </button>
+                    </div>
+
+                    {/* Technician list */}
+                    <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{background:'#1E40AF',padding:'8px 14px'}}>
+                        <div style={{fontSize:11,fontWeight:700,color:'white'}}>👷 Your Technicians ({sfTabTechs.length})</div>
+                      </div>
+                      {sfTabTechs.length===0&&<div style={{padding:24,textAlign:'center',color:'#9CA3AF',fontSize:12}}>No technicians added yet</div>}
+                      {sfTabTechs.map(t=>(
+                        <div key={t.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',borderBottom:'1px solid #F3F4F6'}}>
+                          <div>
+                            <div style={{fontSize:12,fontWeight:600,color:'#111827'}}>{t.name}</div>
+                            <div style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>{t.id}</div>
+                          </div>
+                          <button onClick={()=>sfTabRemoveTech(t.id)}
+                            style={{padding:'4px 10px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:600}}>
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── MATERIAL PRICES SUB-TAB ─── */}
+                {!sfTabDataLoading&&sfSubTab==='materials'&&(
+                  <div style={{background:'white',borderRadius:12,padding:14,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                    <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>🏷️ Material Prices</div>
+                    <div style={{fontSize:11,color:'#6B7280',marginBottom:12}}>Set cost price and selling rate for each material</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 80px 80px',gap:8,marginBottom:6,padding:'0 0 4px'}}>
+                      <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase'}}>Material</div>
+                      <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase',textAlign:'center'}}>Cost</div>
+                      <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase',textAlign:'center'}}>Rate</div>
+                    </div>
+                    {sfTabEditMats.map((m,i)=>(
+                      <div key={m.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 80px',gap:8,alignItems:'center',padding:'7px 0',borderBottom:'1px solid #F3F4F6'}}>
+                        <div style={{fontSize:12,fontWeight:500}}>{m.name}{m.sub?<span style={{fontSize:10,color:'#6B7280'}}> ({m.sub})</span>:null}<span style={{fontSize:9,color:'#9CA3AF',marginLeft:4}}>{m.unit}</span></div>
+                        <input type="number" value={m.costPrice} placeholder="Cost" onChange={e=>{const n=[...sfTabEditMats];n[i]={...n[i],costPrice:parseFloat(e.target.value)||0};setSfTabEditMats(n);}} style={{padding:'5px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',textAlign:'center'}}/>
+                        <input type="number" value={m.sellingRate} placeholder="Rate" onChange={e=>{const n=[...sfTabEditMats];n[i]={...n[i],sellingRate:parseFloat(e.target.value)||0};setSfTabEditMats(n);}} style={{padding:'5px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',textAlign:'center'}}/>
+                      </div>
+                    ))}
+                    <button onClick={sfTabSaveMaterialPrices} style={{width:'100%',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',marginTop:12}}>
+                      Save Prices
+                    </button>
+                  </div>
+                )}
+
+                {/* ─── RECORDS SUB-TAB ─── */}
+                {!sfTabDataLoading&&sfSubTab==='records'&&(
+                  <div>
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>📁 TCR Records — {sfTabSession?.sfName}</div>
+                      <div style={{fontSize:11,color:'#6B7280',marginBottom:14}}>Download approved TCR data as Excel</div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#374151',marginBottom:8}}>Download by Technician</div>
+                      {sfTabTechs.length===0&&<div style={{color:'#9CA3AF',fontSize:12,textAlign:'center',padding:16}}>No technicians in this SF yet</div>}
+                      {sfTabTechs.map(t=>(
+                        <button key={t.id} onClick={async()=>{
+                          const r=await fetch('/api/records?techId='+t.id);
+                          const d=await r.json();
+                          downloadExcel(d,'TCR_'+t.id+'_'+t.name.replace(/\s+/g,'_')+'.xlsx');
+                        }} style={{width:'100%',padding:'9px 12px',background:'#F3F4F6',border:'1px solid #E5E7EB',borderRadius:8,fontSize:12,fontWeight:500,cursor:'pointer',marginBottom:6,display:'flex',alignItems:'center',justifyContent:'space-between',color:'#111827'}}>
+                          <span>🔧 {t.name} <span style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>({t.id})</span></span>
+                          <span style={{fontSize:11,color:'#16A34A',fontWeight:600}}>⬇ Excel</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
