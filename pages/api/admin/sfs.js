@@ -33,6 +33,21 @@ export default async function handler(req, res) {
   // ─── POST: mutations ───────────────────────────────────────────────────────
   if (req.method === 'POST') {
     const { password, action, ...data } = req.body || {};
+
+    // ── sfLogin — uses SF's own password, NOT master password ──
+    if (action === 'sfLogin') {
+      const { sfId, sfPassword } = data;
+      if (!sfId || !sfPassword) return res.status(400).json({ error: 'SF ID and password required' });
+      try {
+        const sfs = await kv.get('admin:sfs') || [];
+        const sf = sfs.find(s => s.id === sfId.toUpperCase());
+        if (!sf || sf.password !== sfPassword) return res.status(401).json({ error: 'Invalid SF ID or password' });
+        return res.status(200).json({ sfId: sf.id, sfName: sf.name });
+      } catch (e) {
+        return res.status(500).json({ error: 'Server error' });
+      }
+    }
+
     if (password !== MASTER_PWD) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
@@ -126,4 +141,3 @@ async function hydrateSfs(sfMeta) {
     return { ...sf, techs: techs.map(({ id, name }) => ({ id, name })) };
   }));
 }
-
