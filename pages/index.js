@@ -96,13 +96,6 @@ export default function App() {
   const [addCost, setAddCost] = useState('');
   const [editMats, setEditMats] = useState([]);
 
-  // ── Price List State (Master) ─────────────────────────────────────────────
-  const [priceList, setPriceList] = useState([]);
-  const [priceMsl, setPriceMsl] = useState(0);
-  const [priceLoading, setPriceLoading] = useState(false);
-  const [priceMsg, setPriceMsg] = useState('');
-  const [priceUploading, setPriceUploading] = useState(false);
-
   // ── SF Management State (Master) ──────────────────────────────────────────
   const [sfs, setSfs] = useState([]);
   const [sfLoading, setSfLoading] = useState(false);
@@ -123,6 +116,7 @@ export default function App() {
   const [stockAdjItem, setStockAdjItem]   = useState(null);   // materialCode being adjusted
   const [stockAdjQty, setStockAdjQty]     = useState('');
   const [stockAdjOp, setStockAdjOp]       = useState('add');  // 'add' | 'subtract' | 'set'
+  const [bulkSparesUploading, setBulkSparesUploading] = useState(false);
  
   // ── Invoice State ─────────────────────────────────────────────────────────
   const [showInvoice, setShowInvoice]         = useState(false);
@@ -134,6 +128,12 @@ export default function App() {
   const [invoiceHistory, setInvoiceHistory]   = useState([]);
   const [showInvHistory, setShowInvHistory]   = useState(false);
   const [invHistLoading, setInvHistLoading]   = useState(false);
+  const [gstSession, setGstSession] = useState('');
+  const [gstCaptcha, setGstCaptcha] = useState('');
+  const [gstCaptchaInput, setGstCaptchaInput] = useState('');
+  const [gstVerifying, setGstVerifying] = useState(false);
+  const [gstError, setGstError] = useState('');
+  const [gstSuccess, setGstSuccess] = useState(false);
 
   // ── Tech (My Stock) State ─────────────────────────────────────────────────
   const [myTechId, setMyTechId] = useState('');
@@ -538,56 +538,6 @@ export default function App() {
   }
   function getStockVal(tid) { const s=allStock[tid]||{}; let v=0; materials.forEach(m=>{v+=(s[m.id]||0)*m.costPrice;}); return v; }
 
-  // ── Price List Functions ───────────────────────────────────────────────────
-  const MASTER_PWD = 'Project@1';
-  async function loadPriceList() {
-    setPriceLoading(true);
-    try {
-      const res = await fetch('/api/pricelist');
-      const json = await res.json();
-      setPriceList(json.items || []);
-      setPriceMsl(json.msl || 0);
-    } catch(e) { setPriceMsg('Error loading price list'); }
-    setPriceLoading(false);
-  }
-  async function handlePriceUpload(e) {
-    const file = e.target.files[0]; if (!file) return;
-    setPriceUploading(true); setPriceMsg('');
-    try {
-      const buffer = await file.arrayBuffer();
-      const workbook = await import('xlsx').then(m => m.default || m);
-      const wb = workbook.read(buffer, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = workbook.utils.sheet_to_json(ws);
-      const res = await fetch('/api/pricelist/upload', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: MASTER_PWD, data: json })
-      });
-      const result = await res.json();
-      if (!res.ok) return setPriceMsg(result.error || 'Upload failed');
-      setPriceMsg(`Uploaded ${result.count} items (${result.total} total)`);
-      await loadPriceList();
-    } catch(err) { setPriceMsg('Error: ' + err.message); }
-    setPriceUploading(false); e.target.value = '';
-  }
-  function downloadPriceList() {
-    const rows = priceList.map(item => ({
-      'Material Code': item.materialCode || '', 'Description': item.description || '',
-      'DP': item.dp || 0, 'MRP': item.mrp || 0, 'Unit': item.unit || 'No.', 'HSN': item.hsn || ''
-    }));
-    import('xlsx').then(async (mod) => {
-      const XLSX = mod.default || mod;
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Price List');
-      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([buf], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'PRICE_LIST.xlsx'; a.click();
-      URL.revokeObjectURL(url);
-    });
-  }
-
   // ── SF Management Functions ────────────────────────────────────────────────
   async function doMasterLogin() {
     if (!masterPwd.trim()) return setMasterPwdErr('Enter your password');
@@ -883,6 +833,27 @@ export default function App() {
       setSfSpares(d.items || []);
     } catch(e) { setSpareMsg('Error deleting'); }
   }
+  async function handleBulkSparesUpload(e) {
+    const file = e.target.files[0]; if (!file) return;
+    setBulkSparesUploading(true); setSpareMsg('');
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = await import('xlsx').then(m => m.default || m);
+      const wb = workbook.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const items = workbook.utils.sheet_to_json(ws);
+      const r = await fetch('/api/inventory/spares', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sfId: sfTabSession.sfId, action: 'bulkUpload', items })
+      });
+      const d = await r.json();
+      if (d.error) return setSpareMsg(d.error);
+      setSfSpares(d.items || []);
+      setSpareMsg('✅ ' + (d.message || 'Bulk upload done!'));
+      setTimeout(() => setSpareMsg(''), 4000);
+    } catch(err) { setSpareMsg('Error: ' + err.message); }
+    setBulkSparesUploading(false); e.target.value = '';
+  }
   // ── SF Spare Inventory / Invoice Functions ────────────────────────────────
   function addInvoiceItem(spare) {
     setInvoiceItems(prev => {
@@ -999,6 +970,31 @@ export default function App() {
     setInvoiceCust({name:'',mobile:'',address:'',gstin:''});
     setInvoiceNo(''); setInvoiceSearchQ('');
     setSpareMsg('Invoice generated & downloaded!'); setTimeout(()=>setSpareMsg(''),3000);
+  }
+  async function fetchGstCaptcha() {
+    setGstError(''); setGstSuccess(false);
+    try {
+      const res = await fetch('/api/gst/captcha');
+      const json = await res.json();
+      setGstSession(json.sessionId || '');
+      setGstCaptcha(json.captcha || '');
+    } catch(e) { setGstError('Could not load captcha. Try again.'); }
+  }
+  async function verifyGst() {
+    if (!invoiceCust.gstin || invoiceCust.gstin.length < 15) return setGstError('Enter valid 15-digit GST number');
+    if (!gstCaptchaInput) return setGstError('Enter captcha code');
+    setGstVerifying(true); setGstError('');
+    try {
+      const res = await fetch('/api/gst/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: gstSession, gstin: invoiceCust.gstin, captcha: gstCaptchaInput })
+      });
+      const json = await res.json();
+      if (!res.ok) return setGstError(json.error || 'Verification failed');
+      setInvoiceCust(p => ({ ...p, name: json.tradeName || json.legalName || p.name }));
+      setGstSuccess(true);
+    } catch(e) { setGstError('Verification failed. Try again.'); }
+    setGstVerifying(false);
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -1499,9 +1495,8 @@ export default function App() {
                     ['technicians','👷 Techs'],
                     ['materials',  '🏷️ Prices'],
                     ['records',    '📁 Records'],
-                    ['pricelist',  '📋 Price List'],
                   ].map(([k,l])=>(
-                    <button key={k} onClick={()=>{setMasterTab(k); if(k==='pricelist') loadPriceList();}}
+                    <button key={k} onClick={()=>setMasterTab(k)}
                       style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',
                         background: masterTab===k ? 'white':'rgba(255,255,255,.5)',
                         color:      masterTab===k ? '#1D4ED8':'#6B7280',
@@ -1826,54 +1821,6 @@ export default function App() {
                   </div>
                 )}
 
-                {/* ─── PRICE LIST TAB ─── */}
-                {!masterLoading&&masterTab==='pricelist'&&(
-                  <div>
-                    <div style={{background:'white',borderRadius:12,padding:16,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-                      <div style={{fontSize:12,fontWeight:700,marginBottom:6}}>📋 Price List (Bulk Upload / Download)</div>
-                      <div style={{fontSize:11,color:'#6B7280',marginBottom:12}}>CSV columns: <strong>Material Code, Description, DP, MRP</strong> (Unit & HSN optional)</div>
-                      {priceMsg&&<div style={{background:priceMsg.includes('Error')?'#FEF2F2':'#F0FDF4',border:'1px solid',borderColor:priceMsg.includes('Error')?'#FECACA':'#BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:priceMsg.includes('Error')?'#DC2626':'#166534',marginBottom:10}}>{priceMsg}</div>}
-                      <div style={{display:'flex',gap:8}}>
-                        <label style={{flex:1,textAlign:'center',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
-                          {priceUploading?'Uploading...':'📤 Upload CSV / Excel'}
-                          <input type="file" accept=".csv,.xlsx,.xls" onChange={handlePriceUpload} style={{display:'none'}} disabled={priceUploading}/>
-                        </label>
-                        <button onClick={downloadPriceList} disabled={priceList.length===0} style={{flex:1,padding:'10px',background:priceList.length===0?'#9CA3AF':'linear-gradient(135deg,#1D4ED8,#1E40AF)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:priceList.length===0?'not-allowed':'pointer'}}>📥 Download</button>
-                      </div>
-                      <div style={{fontSize:10,color:'#9CA3AF',marginTop:8,textAlign:'center'}}>{priceList.length} items uploaded</div>
-                    </div>
-                    {priceList.length>0&&(
-                      <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-                        <div style={{textAlign:'center',padding:'10px 14px',background:'linear-gradient(135deg,#111827,#1F2937)',borderRadius:10,marginBottom:4}}>
-                          <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginBottom:2}}>MSL AMOUNT (Total DP Value)</div>
-                          <div style={{fontSize:22,fontWeight:700,color:'white',fontFamily:'DM Mono,monospace'}}>Rs. {fmtINR(priceMsl)} /-</div>
-                          <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginTop:2}}>Rupees {numToWords(Math.floor(priceMsl))} Only</div>
-                        </div>
-                      </div>
-                    )}
-                    {priceList.length>0&&(
-                      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-                        <div style={{background:'#111827',padding:'8px 14px',display:'grid',gridTemplateColumns:'100px 1fr 70px 70px',gap:6}}>
-                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>MAT CODE</div>
-                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>DESCRIPTION</div>
-                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>DP</div>
-                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>MRP</div>
-                        </div>
-                        <div style={{maxHeight:400,overflowY:'auto'}}>
-                          {priceList.slice(0,100).map((item,i)=>(
-                            <div key={item.materialCode+i} style={{display:'grid',gridTemplateColumns:'100px 1fr 70px 70px',gap:6,padding:'9px 14px',borderBottom:'1px solid #F3F4F6',alignItems:'center'}}>
-                              <div style={{fontSize:11,fontFamily:'monospace',color:'#374151',fontWeight:600}}>{item.materialCode}</div>
-                              <div style={{fontSize:12,color:'#111827'}}>{item.description}</div>
-                              <div style={{fontSize:12,textAlign:'right',fontFamily:'monospace',color:'#16A34A',fontWeight:600}}>₹{fmtINR(item.dp)}</div>
-                              <div style={{fontSize:12,textAlign:'right',fontFamily:'monospace',color:'#374151'}}>₹{fmtINR(item.mrp)}</div>
-                            </div>
-                          ))}
-                          {priceList.length>100&&<div style={{padding:'10px',textAlign:'center',fontSize:11,color:'#9CA3AF'}}>Showing 100 of {priceList.length} items</div>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -2212,9 +2159,29 @@ export default function App() {
                           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
                             <div>
                               <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:2}}>GSTIN (optional)</label>
-                              <input value={invoiceCust.gstin} onChange={e=>setInvoiceCust(p=>({...p,gstin:e.target.value.toUpperCase()}))}
-                                placeholder="15-char GSTIN"
-                                style={{width:'100%',padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:11,outline:'none',fontFamily:'monospace',letterSpacing:1}}/>
+                              <div style={{display:'flex',gap:4}}>
+                                <input value={invoiceCust.gstin} onChange={e=>{setInvoiceCust(p=>({...p,gstin:e.target.value.toUpperCase()})); setGstSuccess(false);}}
+                                  placeholder="15-char GSTIN"
+                                  style={{flex:1,padding:'7px 8px',border:'1.5px solid #BFDBFE',borderRadius:7,fontSize:11,outline:'none',fontFamily:'monospace',letterSpacing:1}}/>
+                                {gstSuccess ? (
+                                  <span style={{padding:'6px 8px',background:'#DCFCE7',borderRadius:7,fontSize:11,color:'#16A34A',fontWeight:700,whiteSpace:'nowrap'}}>✓ Verified</span>
+                                ) : (
+                                  <button onClick={()=>fetchGstCaptcha()} style={{padding:'7px 8px',background:'#7C3AED',color:'white',border:'none',borderRadius:7,fontSize:10,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>Verify</button>
+                                )}
+                              </div>
+                              {gstCaptcha && !gstSuccess && (
+                                <div style={{marginTop:5,background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:7,padding:8}}>
+                                  <div style={{fontSize:9,fontWeight:600,color:'#92400E',marginBottom:4}}>Enter captcha to verify GST</div>
+                                  <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}}>
+                                    <img src={gstCaptcha.startsWith('data:') ? gstCaptcha : 'data:image/png;base64,' + gstCaptcha} alt="captcha" style={{height:36,borderRadius:4,border:'1px solid #E5E7EB'}}/>
+                                    <input value={gstCaptchaInput} onChange={e=>setGstCaptchaInput(e.target.value.toUpperCase())} placeholder="Code" maxLength={6}
+                                      style={{padding:'5px 6px',border:'1px solid #D1D5DB',borderRadius:5,fontSize:12,outline:'none',fontFamily:'monospace',width:70,letterSpacing:3}}/>
+                                    <button onClick={verifyGst} disabled={gstVerifying} style={{padding:'5px 8px',background:'#16A34A',color:'white',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer'}}>{gstVerifying?'...':'Verify'}</button>
+                                    <button onClick={fetchGstCaptcha} style={{padding:'5px 8px',background:'#F3F4F6',border:'1px solid #E5E7EB',borderRadius:5,fontSize:10,cursor:'pointer'}}>↻</button>
+                                  </div>
+                                  {gstError && <div style={{fontSize:9,color:'#DC2626',marginTop:3}}>{gstError}</div>}
+                                </div>
+                              )}
                             </div>
                             <div>
                               <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:2}}>Address</label>
@@ -2346,6 +2313,10 @@ export default function App() {
                             style={{flexShrink:0,padding:'10px 12px',background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'white',border:'none',borderRadius:10,fontSize:11,fontWeight:700,cursor:'pointer'}}>
                             {showAddSpare ? '✕ Close' : '+ Add'}
                           </button>
+                          <label style={{flexShrink:0,padding:'10px 12px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:10,fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+                            {bulkSparesUploading ? 'Uploading...' : '📤 Bulk Upload'}
+                            <input type="file" accept=".csv,.xlsx,.xls" onChange={handleBulkSparesUpload} style={{display:'none'}} disabled={bulkSparesUploading}/>
+                          </label>
                         </div>
  
                         {/* Add spare form */}

@@ -103,6 +103,30 @@ export default async function handler(req, res) {
       return res.json(data);
     }
 
+    // ── bulkUpload ──
+    if (action === 'bulkUpload') {
+      const { items } = payload;
+      if (!Array.isArray(items)) return res.status(400).json({ error: 'items array required' });
+      let added = 0, updated = 0;
+      items.forEach(row => {
+        const code = String(row.materialCode || row['Material Code'] || '').trim().toUpperCase();
+        const desc = String(row.description || row['Description'] || '').trim();
+        const dp = parseFloat(row.dp || row['DP'] || 0) || 0;
+        const mrp = parseFloat(row.mrp || row['MRP'] || 0) || 0;
+        if (!code) return;
+        const idx = data.items.findIndex(i => i.materialCode === code);
+        if (idx >= 0) {
+          data.items[idx] = { ...data.items[idx], description: desc || data.items[idx].description, dp, mrp };
+          updated++;
+        } else {
+          data.items.push({ materialCode: code, description: desc, dp, mrp, stock: 0, usageCount: 0, totalQtySold: 0, createdAt: Date.now() });
+          added++;
+        }
+      });
+      await store.set(key, data);
+      return res.json({ ...data, message: `Added ${added}, updated ${updated} items` });
+    }
+
     return res.status(400).json({ error: 'Unknown action' });
   }
 

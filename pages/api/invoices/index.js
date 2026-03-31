@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   if (password !== MASTER_PWD) return res.status(401).json({ error: 'Unauthorized' });
   if (!invoice) return res.status(400).json({ error: 'Invoice data required' });
   try {
-    const { saveInvoice } = await import('../../../lib/invoices');
+    const { saveInvoice } = await import('../../../lib/billing');
     const saved = await saveInvoice(invoice);
     return res.status(200).json({ success: true, invoice: saved });
   } catch(e) {
