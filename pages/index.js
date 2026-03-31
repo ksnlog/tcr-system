@@ -28,6 +28,16 @@ const tonOptions = [
 ];
 const MASTER_PWD = 'Project@1';
 const fmtINR = n => Number(n||0).toLocaleString('en-IN');
+const numToWords = n => {
+  if (!n) return 'Zero Rupees Only';
+  const a = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const b = ['','Ten','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  const k = l => { let s=''; n=Math.floor(n); if(n>100){s=a[Math.floor(n/100)]+' Hundred ';n%=100;} if(n>19)s+=b[Math.floor(n/10)]+(n%10?' '+a[n%10]:'');else s+=a[n];return s.trim(); };
+  if(n>=10000000)return k(Math.floor(n/10000000))+' Crore '+k(Math.floor((n%10000000)/100000))+' Lakh '+k(Math.floor((n%100000)/1000))+' Thousand '+k(n%1000)+(l?' '+l:'');
+  if(n>=100000)return k(Math.floor(n/100000))+' Lakh '+k(Math.floor((n%100000)/1000))+' Thousand '+k(n%1000)+(l?' '+l:'');
+  if(n>=1000)return k(Math.floor(n/1000))+' Thousand '+k(n%1000)+(l?' '+l:'');
+  return k(n)+(l?' '+l:'');
+};
 
 export default function App() {
   const [mainTab, setMainTab] = useState('tcr');
@@ -74,6 +84,34 @@ export default function App() {
   const [addQty, setAddQty] = useState('');
   const [addCost, setAddCost] = useState('');
   const [editMats, setEditMats] = useState([]);
+
+  // Price List State
+  const [priceList, setPriceList] = useState([]);
+  const [priceMsl, setPriceMsl] = useState(0);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [priceMsg, setPriceMsg] = useState('');
+  const [priceUploading, setPriceUploading] = useState(false);
+
+  // Invoice State
+  const [invoiceTab, setInvoiceTab] = useState('create');
+  const [invoiceList, setInvoiceList] = useState([]);
+  const [invoiceListLoading, setInvoiceListLoading] = useState(false);
+  const [inv, setInv] = useState({
+    invoiceNo:'', date: new Date().toISOString().split('T')[0],
+    customerName:'', customerAddress:'', customerGST:'', customerBusinessName:'',
+    items: [], notes:''
+  });
+  const [invSearch, setInvSearch] = useState('');
+  const [gstSession, setGstSession] = useState('');
+  const [gstCaptcha, setGstCaptcha] = useState('');
+  const [gstCaptchaInput, setGstCaptchaInput] = useState('');
+  const [gstVerifying, setGstVerifying] = useState(false);
+  const [gstError, setGstError] = useState('');
+  const [gstSuccess, setGstSuccess] = useState(false);
+  const [addingInvItem, setAddingInvItem] = useState({materialCode:'', description:'', hsn:'', qty:1, dp:0, mrp:0});
+  const [invSaving, setInvSaving] = useState(false);
+  const [invMsg, setInvMsg] = useState('');
+  const [reprintId, setReprintId] = useState(null);
 
   // Tech State
   const [myTechId, setMyTechId] = useState('');
@@ -299,6 +337,246 @@ export default function App() {
   }
   function getStockVal(tid) { const s=allStock[tid]||{}; let v=0; materials.forEach(m=>{v+=(s[m.id]||0)*m.costPrice;}); return v; }
 
+  // Price List Functions
+  async function loadPriceList() {
+    setPriceLoading(true);
+    try {
+      const res = await fetch('/api/pricelist');
+      const json = await res.json();
+      setPriceList(json.items || []);
+      setPriceMsl(json.msl || 0);
+    } catch(e) { setPriceMsg('Error loading price list'); }
+    setPriceLoading(false);
+  }
+  async function handlePriceUpload(e) {
+    const file = e.target.files[0]; if (!file) return;
+    setPriceUploading(true); setPriceMsg('');
+    try {
+      const buffer = await file.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      const workbook = await import('xlsx').then(m => m.default || m);
+      const XLSX = workbook;
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws);
+      const res = await fetch('/api/pricelist/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: MASTER_PWD, data: json })
+      });
+      const result = await res.json();
+      if (!res.ok) return setPriceMsg(result.error || 'Upload failed');
+      setPriceMsg(`Uploaded ${result.count} items (${result.total} total)`);
+      await loadPriceList();
+    } catch(err) { setPriceMsg('Error: ' + err.message); }
+    setPriceUploading(false); e.target.value = '';
+  }
+  function downloadPriceList() {
+    const rows = priceList.map(item => ({
+      'Material Code': item.materialCode || '',
+      'Description': item.description || '',
+      'DP': item.dp || 0,
+      'MRP': item.mrp || 0,
+      'Unit': item.unit || 'No.',
+      'HSN': item.hsn || ''
+    }));
+    import('xlsx').then(async (mod) => {
+      const XLSX = mod.default || mod;
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Price List');
+      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([buf], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'PRICE_LIST.xlsx'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // GST Verification Functions
+  async function fetchGstCaptcha() {
+    setGstError(''); setGstSuccess(false);
+    try {
+      const res = await fetch('/api/gst/captcha');
+      const json = await res.json();
+      setGstSession(json.sessionId || '');
+      setGstCaptcha(json.captcha || '');
+    } catch(e) { setGstError('Could not load captcha. Try again.'); }
+  }
+  async function verifyGst() {
+    if (!inv.customerGST || inv.customerGST.length < 15) return setGstError('Enter valid 15-digit GST number');
+    if (!gstCaptchaInput) return setGstError('Enter captcha code');
+    setGstVerifying(true); setGstError('');
+    try {
+      const res = await fetch('/api/gst/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: gstSession, gstin: inv.customerGST, captcha: gstCaptchaInput })
+      });
+      const json = await res.json();
+      if (!res.ok) return setGstError(json.error || 'Verification failed');
+      setInv(p => ({ ...p, customerBusinessName: json.tradeName || json.legalName || '' }));
+      setGstSuccess(true);
+    } catch(e) { setGstError('Verification failed. Try again.'); }
+    setGstVerifying(false);
+  }
+
+  // Invoice Functions
+  function calcInvTotals() {
+    let taxable = 0;
+    inv.items.forEach(it => { taxable += (parseFloat(it.qty) || 0) * (parseFloat(it.dp) || 0); });
+    const igst = Math.round(taxable * 0.09);
+    const sgst = Math.round(taxable * 0.09);
+    return { taxable, igst, sgst, total: taxable + igst + sgst };
+  }
+  function addInvItem() {
+    if (!addingInvItem.materialCode || !addingInvItem.description) return;
+    setInv(p => ({ ...p, items: [...p.items, { ...addingInvItem }] }));
+    setAddingInvItem({ materialCode: '', description: '', hsn: '', qty: 1, dp: 0, mrp: 0 });
+  }
+  function removeInvItem(i) { setInv(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) })); }
+  async function saveInvoice() {
+    if (!inv.customerName) return setInvMsg('Customer name required');
+    if (inv.items.length === 0) return setInvMsg('Add at least one item');
+    setInvSaving(true); setInvMsg('');
+    const { taxable, igst, sgst, total } = calcInvTotals();
+    const invoice = { ...inv, invoiceNo: inv.invoiceNo || 'INV-' + Date.now(), taxable, igst, sgst, total, createdAt: new Date().toISOString() };
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: MASTER_PWD, invoice })
+      });
+      const json = await res.json();
+      if (!res.ok) return setInvMsg(json.error || 'Failed to save');
+      setInvMsg('Invoice saved! Invoice No: ' + json.invoice.invoiceNo);
+      setReprintId(json.invoice.id);
+      setInv({ invoiceNo:'', date: new Date().toISOString().split('T')[0], customerName:'', customerAddress:'', customerGST:'', customerBusinessName:'', items:[], notes:'' });
+    } catch(e) { setInvMsg('Failed to save: ' + e.message); }
+    setInvSaving(false);
+  }
+  async function loadInvoiceList() {
+    setInvoiceListLoading(true);
+    try {
+      const res = await fetch('/api/invoices');
+      const data = await res.json();
+      setInvoiceList(Array.isArray(data) ? data : []);
+    } catch(e) {}
+    setInvoiceListLoading(false);
+  }
+  async function reprintInvoice(id) {
+    try {
+      const res = await fetch('/api/invoices/' + id);
+      const invoice = await res.json();
+      if (!invoice) return;
+      buildInvoicePDF(invoice);
+    } catch(e) {}
+  }
+  function generateInvNo() {
+    const d = new Date();
+    const prefix = 'INV-' + d.getFullYear() + String(d.getMonth()+1).padStart(2,'0');
+    setInv(p => ({ ...p, invoiceNo: prefix + '-' + String(Date.now()).slice(-6) }));
+  }
+  async function buildInvoicePDF(inv) {
+    try {
+      const { jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+      const doc = new jsPDF({ unit:'mm', format:'a4', compress:true });
+      const W=210, M=14;
+      doc.setFillColor(232,0,29); doc.rect(0,0,W,25,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      doc.text('GENERAL HVAC Solutions India Pvt Ltd', M, 10);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text('Authorized Service Partner - Tax Invoice', M, 16);
+      doc.setFontSize(7); doc.text('GSTIN: XXXXXXXXXXXXXXX', M, 21);
+      doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text('INVOICE', W/2, 10, { align:'center' });
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+      doc.text('Invoice #: ' + (inv.invoiceNo||''), W-M, 10, { align:'right' });
+      doc.text('Date: ' + (inv.date||''), W-M, 16, { align:'right' });
+      let y = 30;
+      doc.setFillColor(245,245,245); doc.setDrawColor(220,220,220); doc.roundedRect(M, y, W-M*2, 22, 2, 2, 'FD');
+      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(80,80,80);
+      doc.text('BILL TO', M+4, y+5);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+      doc.text(inv.customerName||'', M+4, y+11);
+      doc.setFontSize(8); doc.setTextColor(80,80,80);
+      if (inv.customerBusinessName) doc.text(inv.customerBusinessName, M+4, y+16);
+      if (inv.customerAddress) doc.text(inv.customerAddress.substring(0,60), M+4, y+20);
+      if (inv.customerGST) { doc.setFontSize(7); doc.text('GSTIN: ' + inv.customerGST, W-M, y+20, { align:'right' }); }
+      y += 28;
+      const rows = (inv.items||[]).map((it,i) => [
+        i+1,
+        (it.materialCode||'') + (it.description ? '\n' + it.description : ''),
+        it.hsn||'',
+        it.qty||0,
+        it.unit||'No.',
+        'Rs.' + Number(it.dp||0).toLocaleString('en-IN'),
+        'Rs.' + Number((parseFloat(it.qty)||0)*(parseFloat(it.dp)||0)).toLocaleString('en-IN')
+      ]);
+      doc.autoTable({
+        startY: y,
+        margin: { left:M, right:M },
+        head: [['#','Description','HSN','Qty','Unit','DP','Amount']],
+        body: rows,
+        styles: { fontSize:8, cellPadding:3, textColor:[50,50,50] },
+        headStyles: { fillColor:[30,30,30], textColor:[255,255,255], fontStyle:'bold', fontSize:8 },
+        alternateRowStyles: { fillColor:[248,248,248] },
+        columnStyles: {
+          0:{ cellWidth:10 }, 1:{ cellWidth:70 }, 2:{ cellWidth:25 }, 3:{ cellWidth:15, halign:'center' },
+          4:{ cellWidth:15 }, 5:{ cellWidth:25, halign:'right' }, 6:{ cellWidth:25, halign:'right' }
+        },
+        theme: 'grid'
+      });
+      y = doc.lastAutoTable.finalY + 6;
+      const bx = W-M-75, bw = 75;
+      doc.setFillColor(248,248,248); doc.setDrawColor(220,220,220); doc.roundedRect(bx, y, bw, 38, 2, 2, 'FD');
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+      doc.text('Taxable Value', bx+4, y+7); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20); doc.text('Rs.'+Number(inv.taxable||0).toLocaleString('en-IN'), bx+bw-4, y+7, { align:'right' });
+      doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+      doc.text('IGST @ 9%', bx+4, y+15); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20); doc.text('Rs.'+Number(inv.igst||0).toLocaleString('en-IN'), bx+bw-4, y+15, { align:'right' });
+      doc.text('SGST @ 9%', bx+4, y+22); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20); doc.text('Rs.'+Number(inv.sgst||0).toLocaleString('en-IN'), bx+bw-4, y+22, { align:'right' });
+      doc.setDrawColor(200,200,200); doc.line(bx+4, y+26, bx+bw-4, y+26);
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(232,0,29);
+      doc.text('TOTAL', bx+4, y+34); doc.text('Rs.'+Number(inv.total||0).toLocaleString('en-IN'), bx+bw-4, y+34, { align:'right' });
+      y += 44;
+      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+      doc.text('Amount in Words: ' + (inv.customerName ? '' : '') + 'Rupees ' + numToWords(Math.floor(inv.total||0)) + ' Only', M, y);
+      if (inv.notes) { y += 8; doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(100,100,100); doc.text('Notes: ' + inv.notes, M, y); }
+      y += 14;
+      doc.setFillColor(30,30,30); doc.rect(0, 287, W, 10, 'F');
+      doc.setTextColor(160,160,160); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.text('GENERAL HVAC Solutions India Pvt Ltd  |  Invoice: ' + (inv.invoiceNo||''), W/2, 293, { align:'center' });
+      doc.save('Invoice_' + (inv.invoiceNo||'receipt') + '.pdf');
+    } catch(e) { console.log('PDF error:', e); }
+  }
+  function downloadInvoiceExcel(inv) {
+    import('xlsx').then(async (mod) => {
+      const XLSX = mod.default || mod;
+      const rows = (inv.items||[]).map((it,i) => ({
+        '#': i+1,
+        'Material Code': it.materialCode||'',
+        'Description': it.description||'',
+        'HSN': it.hsn||'',
+        'Qty': it.qty||0,
+        'Unit': it.unit||'No.',
+        'DP (Rs.)': it.dp||0,
+        'Amount (Rs.)': (parseFloat(it.qty)||0)*(parseFloat(it.dp)||0)
+      }));
+      rows.push({});
+      rows.push({ '#':'', 'Material Code':'', 'Description':'Taxable Value', 'HSN':'', 'Qty':'', 'Unit':'', 'DP (Rs.)':'', 'Amount (Rs.)': inv.taxable||0 });
+      rows.push({ '#':'', 'Material Code':'', 'Description':'IGST @ 9%', 'HSN':'', 'Qty':'', 'Unit':'', 'DP (Rs.)':'', 'Amount (Rs.)': inv.igst||0 });
+      rows.push({ '#':'', 'Material Code':'', 'Description':'SGST @ 9%', 'HSN':'', 'Qty':'', 'Unit':'', 'DP (Rs.)':'', 'Amount (Rs.)': inv.sgst||0 });
+      rows.push({ '#':'', 'Material Code':'', 'Description':'TOTAL', 'HSN':'', 'Qty':'', 'Unit':'', 'DP (Rs.)':'', 'Amount (Rs.)': inv.total||0 });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Invoice');
+      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([buf], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'Invoice_'+(inv.invoiceNo||'receipt')+'.xlsx'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   // Tech Functions
   async function techLogin() {
     if (!myTechId.trim()) return setTechErr('Enter your Technician ID');
@@ -330,7 +608,7 @@ export default function App() {
         body{font-family:'Poppins',sans-serif;background:#E5DDD5;min-height:100vh;padding:0 0 66px 0;color:#111827}
         :root{--brand:#E8001D;--green:#16A34A;--green2:#15803D;--dark:#111827;--mid:#374151;--muted:#6B7280;--light:#F3F4F6;--border:#E5E7EB}
         .tab-bar{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #E5E7EB;display:flex;z-index:100;box-shadow:0 -2px 10px rgba(0,0,0,.08)}
-        .tab-btn{flex:1;padding:10px 4px 8px;border:none;background:none;font-family:'Poppins',sans-serif;font-size:10px;font-weight:500;color:#9CA3AF;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+        .tab-btn{flex:1;padding:10px 2px 8px;border:none;background:none;font-family:'Poppins',sans-serif;font-size:9.5px;font-weight:500;color:#9CA3AF;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
         .tab-btn.act{color:#E8001D;font-weight:700}
         .tab-icon{font-size:18px}
         .wrap{max-width:480px;margin:0 auto;padding:10px 8px 10px}
@@ -422,6 +700,9 @@ export default function App() {
         </button>
         <button className={"tab-btn"+(mainTab==='master'?' act':'')} onClick={()=>setMainTab('master')}>
           <span className="tab-icon">📦</span>Master
+        </button>
+        <button className={"tab-btn"+(mainTab==='invoices'?' act':'')} onClick={()=>{setMainTab('invoices'); if(invoiceList.length===0) loadInvoiceList();}}>
+          <span className="tab-icon">🧾</span>Invoices
         </button>
         <button className={"tab-btn"+(mainTab==='inventory'?' act':'')} onClick={()=>setMainTab('inventory')}>
           <span className="tab-icon">🔧</span>My Stock
@@ -688,8 +969,8 @@ export default function App() {
                 </div>
                 {masterMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{masterMsg}</div>}
                 <div style={{display:'flex',gap:6,marginBottom:12}}>
-                  {[['stock','📊 Stock'],['technicians','👷 Technicians'],['materials','🏷️ Prices']].map(([k,l])=>(
-                    <button key={k} onClick={()=>setMasterTab(k)} style={{flex:1,padding:'9px 4px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:12,fontWeight:600,cursor:'pointer',background:masterTab===k?'white':'rgba(255,255,255,.5)',color:masterTab===k?'#E8001D':'#6B7280',boxShadow:masterTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
+                  {[['stock','📊 Stock'],['technicians','👷 Technicians'],['materials','🏷️ Prices'],['pricelist','📋 Price List']].map(([k,l])=>(
+                    <button key={k} onClick={()=>{setMasterTab(k); if(k==='pricelist') loadPriceList();}} style={{flex:1,padding:'9px 4px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:12,fontWeight:600,cursor:'pointer',background:masterTab===k?'white':'rgba(255,255,255,.5)',color:masterTab===k?'#E8001D':'#6B7280',boxShadow:masterTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
                   ))}
                 </div>
                 {masterLoading&&<div style={{textAlign:'center',padding:40,color:'#6B7280'}}>Loading...</div>}
@@ -781,7 +1062,206 @@ export default function App() {
                     <button onClick={saveMaterialPrices} style={{width:'100%',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',marginTop:12}}>Save Prices</button>
                   </div>
                 )}
+                {!masterLoading&&masterTab==='pricelist'&&(
+                  <div>
+                    <div style={{background:'white',borderRadius:12,padding:16,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:6}}>📋 Price List (Bulk Upload / Download)</div>
+                      <div style={{fontSize:11,color:'#6B7280',marginBottom:12}}>
+                        CSV columns: <strong>Material Code, Description, DP, MRP</strong> (Unit & HSN optional)
+                      </div>
+                      {priceMsg&&<div style={{background:priceMsg.includes('Error')?'#FEF2F2':'#F0FDF4',border:'1px solid',borderColor:priceMsg.includes('Error')?'#FECACA':'#BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:priceMsg.includes('Error')?'#DC2626':'#166534',marginBottom:10}}>{priceMsg}</div>}
+                      <div style={{display:'flex',gap:8}}>
+                        <label style={{flex:1,textAlign:'center',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                          {priceUploading?'Uploading...':'📤 Upload CSV / Excel'}
+                          <input type="file" accept=".csv,.xlsx,.xls" onChange={handlePriceUpload} style={{display:'none'}} disabled={priceUploading}/>
+                        </label>
+                        <button onClick={downloadPriceList} disabled={priceList.length===0} style={{flex:1,padding:'10px',background:priceList.length===0?'#9CA3AF':'linear-gradient(135deg,#1D4ED8,#1E40AF)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:priceList.length===0?'not-allowed':'pointer'}}>📥 Download</button>
+                      </div>
+                      <div style={{fontSize:10,color:'#9CA3AF',marginTop:8,textAlign:'center'}}>{priceList.length} items uploaded</div>
+                    </div>
+                    {priceList.length>0&&(
+                      <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                        <div style={{textAlign:'center',padding:'10px 14px',background:'linear-gradient(135deg,#111827,#1F2937)',borderRadius:10,marginBottom:4}}>
+                          <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginBottom:2}}>MSL AMOUNT (Total DP Value)</div>
+                          <div style={{fontSize:22,fontWeight:700,color:'white',fontFamily:'DM Mono,monospace'}}>Rs. {fmtINR(priceMsl)} /-</div>
+                          <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginTop:2}}>Rupees {numToWords(Math.floor(priceMsl))} Only</div>
+                        </div>
+                      </div>
+                    )}
+                    {priceList.length>0&&(
+                      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                        <div style={{background:'#111827',padding:'8px 14px',display:'grid',gridTemplateColumns:'80px 1fr 70px 70px',gap:6}}>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>MAT CODE</div>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>DESCRIPTION</div>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>DP</div>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>MRP</div>
+                        </div>
+                        <div style={{maxHeight:400,overflowY:'auto'}}>
+                          {priceList.slice(0,100).map((item,i)=>(
+                            <div key={item.materialCode+i} style={{display:'grid',gridTemplateColumns:'80px 1fr 70px 70px',gap:6,padding:'9px 14px',borderBottom:'1px solid #F3F4F6',alignItems:'center'}}>
+                              <div style={{fontSize:11,fontFamily:'DM Mono,monospace',color:'#374151',fontWeight:600}}>{item.materialCode}</div>
+                              <div style={{fontSize:12,color:'#111827'}}>{item.description}</div>
+                              <div style={{fontSize:12,textAlign:'right',fontFamily:'DM Mono,monospace',color:'#16A34A',fontWeight:600}}>₹{fmtINR(item.dp)}</div>
+                              <div style={{fontSize:12,textAlign:'right',fontFamily:'DM Mono,monospace',color:'#374151'}}>₹{fmtINR(item.mrp)}</div>
+                            </div>
+                          ))}
+                          {priceList.length>100&&<div style={{padding:'10px',textAlign:'center',fontSize:11,color:'#9CA3AF'}}>Showing 100 of {priceList.length} items</div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* INVOICES TAB */}
+      {mainTab==='invoices' && (
+        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
+          <div style={{maxWidth:720,margin:'0 auto'}}>
+            <div style={{background:'linear-gradient(135deg,#E8001D,#9B0013)',borderRadius:14,padding:'14px 16px',color:'white',marginBottom:12}}>
+              <div style={{fontSize:14,fontWeight:700}}>🧾 Invoicing</div>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginTop:2}}>GENERAL HVAC Solutions India Pvt Ltd</div>
+            </div>
+            {invMsg&&<div style={{background:invMsg.includes('required')||invMsg.includes('failed')?'#FEF2F2':'#F0FDF4',border:'1px solid',borderColor:invMsg.includes('required')||invMsg.includes('failed')?'#FECACA':'#BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:invMsg.includes('required')||invMsg.includes('failed')?'#DC2626':'#166534',marginBottom:10}}>{invMsg}</div>}
+            <div style={{display:'flex',gap:6,marginBottom:12}}>
+              {[['create','✏️ Create'],['list','📋 All Invoices']].map(([k,l])=>(
+                <button key={k} onClick={()=>{setInvoiceTab(k); if(k==='list') loadInvoiceList();}} style={{flex:1,padding:'9px 4px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:12,fontWeight:600,cursor:'pointer',background:invoiceTab===k?'white':'rgba(255,255,255,.5)',color:invoiceTab===k?'#E8001D':'#6B7280',boxShadow:invoiceTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
+              ))}
+            </div>
+
+            {invoiceTab==='create'&&(
+              <div>
+                <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                  <div style={{fontSize:12,fontWeight:700,marginBottom:10}}>📝 Invoice Details</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                    <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Invoice No.</label>
+                      <div style={{display:'flex',gap:6}}>
+                        <input value={inv.invoiceNo} onChange={e=>setInv(p=>({...p,invoiceNo:e.target.value.toUpperCase()}))} placeholder="Auto or manual" style={{flex:1,padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none',fontFamily:'DM Mono,monospace'}}/>
+                        <button onClick={generateInvNo} style={{padding:'7px 10px',background:'#F3F4F6',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>Auto</button>
+                      </div>
+                    </div>
+                    <div><label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Date</label>
+                      <input type="date" value={inv.date} onChange={e=>setInv(p=>({...p,date:e.target.value}))} style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/></div>
+                  </div>
+                  <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:'#374151'}}>Customer Details</div>
+                  <div className="fg" style={{marginBottom:8}}>
+                    <div className="field"><label>Customer / Business Name *</label><input value={inv.customerName} onChange={e=>setInv(p=>({...p,customerName:e.target.value}))} placeholder="Customer name"/></div>
+                    <div className="field"><label>GST Number (optional)</label>
+                      <div style={{display:'flex',gap:6}}>
+                        <input value={inv.customerGST} maxLength={15} onChange={e=>setInv(p=>({...p,customerGST:e.target.value.toUpperCase()}))} placeholder="15-char GST number" style={{flex:1,padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none',fontFamily:'DM Mono,monospace',letterSpacing:1}}/>
+                        <button onClick={()=>{fetchGstCaptcha();}} style={{padding:'7px 10px',background:gstSuccess?'#16A34A':'#E8001D',color:'white',border:'none',borderRadius:8,fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>{gstSuccess?'✓':'Verify'}</button>
+                      </div>
+                    </div>
+                  </div>
+                  {gstCaptcha&&!gstSuccess&&(
+                    <div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:8,padding:'10px',marginBottom:8}}>
+                      <div style={{fontSize:10,fontWeight:600,color:'#92400E',marginBottom:6}}>Enter GST Portal Captcha to verify</div>
+                      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                        <img src={"data:image/png;base64,"+gstCaptcha} alt="captcha" style={{height:40,borderRadius:6,border:'1px solid #E5E7EB'}}/>
+                        <input value={gstCaptchaInput} onChange={e=>setGstCaptchaInput(e.target.value.toUpperCase())} placeholder="Captcha code" maxLength={6} style={{padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:13,outline:'none',fontFamily:'DM Mono,monospace',letterSpacing:4,width:100}}/>
+                        <button onClick={verifyGst} disabled={gstVerifying} style={{padding:'7px 14px',background:'#16A34A',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>{gstVerifying?'Verifying...':'Verify'}</button>
+                        <button onClick={fetchGstCaptcha} style={{padding:'7px 10px',background:'#F3F4F6',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:11,cursor:'pointer'}}>↻ New</button>
+                      </div>
+                      {gstSuccess&&<div style={{color:'#16A34A',fontSize:11,marginTop:4,fontWeight:600}}>✓ GST Verified!</div>}
+                      {gstError&&<div style={{color:'#DC2626',fontSize:11,marginTop:4}}>{gstError}</div>}
+                    </div>
+                  )}
+                  <div className="fg one">
+                    <div className="field"><label>Address</label><textarea value={inv.customerAddress} onChange={e=>setInv(p=>({...p,customerAddress:e.target.value}))} placeholder="Billing address" style={{height:44}}/></div>
+                  </div>
+                  {inv.customerBusinessName&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:6,padding:'6px 10px',fontSize:11,color:'#166534',marginBottom:6}}>🏢 {inv.customerBusinessName}</div>}
+                </div>
+
+                <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                  <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>📦 Items</div>
+                  <div style={{display:'grid',gridTemplateColumns:'90px 1fr 60px 50px 65px 65px',gap:6,marginBottom:6}}>
+                    <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase'}}>Mat Code</div>
+                    <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase'}}>Description</div>
+                    <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase'}}>HSN</div>
+                    <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase',textAlign:'center'}}>Qty</div>
+                    <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase',textAlign:'right'}}>DP</div>
+                    <div style={{fontSize:9,color:'#6B7280',fontWeight:600,textTransform:'uppercase',textAlign:'right'}}>MRP</div>
+                  </div>
+                  {inv.items.map((it,i)=>(
+                    <div key={i} style={{display:'grid',gridTemplateColumns:'90px 1fr 60px 50px 65px 65px',gap:6,alignItems:'center',padding:'7px 0',borderBottom:'1px solid #F3F4F6'}}>
+                      <div style={{fontSize:11,fontFamily:'DM Mono,monospace',color:'#374151'}}>{it.materialCode}</div>
+                      <div style={{fontSize:11,color:'#111827'}}>{it.description}</div>
+                      <div style={{fontSize:11,color:'#6B7280'}}>{it.hsn}</div>
+                      <div style={{fontSize:12,fontFamily:'DM Mono,monospace',textAlign:'center'}}>{it.qty}</div>
+                      <div style={{fontSize:12,fontFamily:'DM Mono,monospace',textAlign:'right',color:'#16A34A',fontWeight:600}}>₹{fmtINR(it.dp)}</div>
+                      <div style={{fontSize:12,fontFamily:'DM Mono,monospace',textAlign:'right',color:'#374151'}}>₹{fmtINR(it.mrp)}</div>
+                      <button onClick={()=>removeInvItem(i)} style={{gridColumn:'6',justifySelf:'end',padding:'2px 8px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:4,fontSize:10,cursor:'pointer'}}>✕</button>
+                    </div>
+                  ))}
+                  <div style={{display:'grid',gridTemplateColumns:'90px 1fr 60px 50px 65px 65px',gap:6,alignItems:'center',marginTop:8,paddingTop:8,borderTop:'1px dashed #E5E7EB'}}>
+                    <input value={addingInvItem.materialCode} onChange={e=>setAddingInvItem(p=>({...p,materialCode:e.target.value}))} placeholder="Code" style={{padding:'6px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',fontFamily:'DM Mono,monospace'}}/>
+                    <input value={addingInvItem.description} onChange={e=>setAddingInvItem(p=>({...p,description:e.target.value}))} placeholder="Description" style={{padding:'6px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none'}}/>
+                    <input value={addingInvItem.hsn} onChange={e=>setAddingInvItem(p=>({...p,hsn:e.target.value}))} placeholder="HSN" style={{padding:'6px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none'}}/>
+                    <input type="number" min="1" value={addingInvItem.qty} onChange={e=>setAddingInvItem(p=>({...p,qty:parseInt(e.target.value)||1}))} style={{padding:'6px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',textAlign:'center'}}/>
+                    <input type="number" min="0" value={addingInvItem.dp} onChange={e=>setAddingInvItem(p=>({...p,dp:parseFloat(e.target.value)||0}))} placeholder="DP" style={{padding:'6px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',textAlign:'right'}}/>
+                    <input type="number" min="0" value={addingInvItem.mrp} onChange={e=>setAddingInvItem(p=>({...p,mrp:parseFloat(e.target.value)||0}))} placeholder="MRP" style={{padding:'6px 6px',border:'1.5px solid #E5E7EB',borderRadius:6,fontSize:11,outline:'none',textAlign:'right'}}/>
+                  </div>
+                  <button onClick={addInvItem} style={{width:'100%',padding:'8px',marginTop:8,background:'#F3F4F6',border:'1.5px dashed #D1D5DB',borderRadius:8,fontSize:12,cursor:'pointer',color:'#374151'}}>+ Add Item</button>
+                </div>
+
+                {inv.items.length>0&&(()=>{
+                  const { taxable, igst, sgst, total } = calcInvTotals();
+                  return (
+                    <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',fontSize:11.5,color:'#374151'}}><span>Taxable Value (DP)</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>₹{fmtINR(taxable)}</span></div>
+                      <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',fontSize:11.5,color:'#374151'}}><span>IGST @ 9%</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>₹{fmtINR(igst)}</span></div>
+                      <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',fontSize:11.5,color:'#374151'}}><span>SGST @ 9%</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>₹{fmtINR(sgst)}</span></div>
+                      <div style={{display:'flex',justifyContent:'space-between',padding:'3px 0',fontSize:11.5,color:'#374151',borderTop:'1px solid #E5E7EB',marginTop:4,paddingTop:8}}><span>Total</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>₹{fmtINR(total)}</span></div>
+                      <div style={{fontSize:10,color:'#9CA3AF',marginTop:2,paddingLeft:4}}>Rupees {numToWords(Math.floor(total))} Only</div>
+                    </div>
+                  );
+                })()}
+
+                <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                  <div className="fg one" style={{marginBottom:10}}>
+                    <div className="field"><label>Notes</label><textarea value={inv.notes} onChange={e=>setInv(p=>({...p,notes:e.target.value}))} placeholder="Payment terms, notes, etc." style={{height:44}}/></div>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={saveInvoice} disabled={invSaving} style={{flex:1,padding:'12px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:10,fontSize:13,fontWeight:600,cursor:invSaving?'not-allowed':'pointer'}}>
+                      {invSaving?'Saving...':'💾 Save Invoice'}
+                    </button>
+                    {reprintId&&<button onClick={()=>reprintInvoice(reprintId)} style={{padding:'12px 16px',background:'#F3F4F6',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer'}}>🖨️ Reprint</button>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {invoiceTab==='list'&&(
+              <div>
+                <div style={{background:'white',borderRadius:12,padding:12,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                  <input value={invSearch} onChange={e=>setInvSearch(e.target.value)} placeholder="Search by invoice no, customer name, GST..." style={{width:'100%',padding:'9px 12px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                </div>
+                {invoiceListLoading&&<div style={{textAlign:'center',padding:30,color:'#9CA3AF'}}>Loading...</div>}
+                {!invoiceListLoading&&invoiceList.length===0&&<div style={{textAlign:'center',padding:40,color:'#9CA3AF',fontSize:13}}>No invoices yet. Create your first invoice!</div>}
+                {invoiceList.filter(inv2=>!invSearch||(inv2.invoiceNo||'').toLowerCase().includes(invSearch.toLowerCase())||(inv2.customerName||'').toLowerCase().includes(invSearch.toLowerCase())||(inv2.customerGST||'').toLowerCase().includes(invSearch.toLowerCase())).map((inv2,i)=>(
+                  <div key={inv2.id||i} style={{background:'white',borderRadius:12,padding:14,marginBottom:10,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,color:'#111827'}}>{inv2.invoiceNo||'N/A'}</div>
+                        <div style={{fontSize:10,color:'#9CA3AF'}}>{inv2.date||''} · {inv2.customerName||'Customer'}</div>
+                        {inv2.customerGST&&<div style={{fontSize:10,color:'#6B7280',fontFamily:'DM Mono,monospace'}}>GST: {inv2.customerGST}</div>}
+                      </div>
+                      <div style={{textAlign:'right'}}>
+                        <div style={{fontSize:16,fontWeight:700,color:'#E8001D',fontFamily:'DM Mono,monospace'}}>₹{fmtINR(inv2.total)}</div>
+                        <div style={{fontSize:9,color:'#9CA3AF'}}>Incl. GST</div>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                      <button onClick={()=>reprintInvoice(inv2.id)} style={{padding:'6px 12px',background:'#111827',color:'white',border:'none',borderRadius:7,fontSize:11,fontWeight:600,cursor:'pointer'}}>🖨️ Reprint PDF</button>
+                      <button onClick={()=>downloadInvoiceExcel(inv2)} style={{padding:'6px 12px',background:'#F3F4F6',color:'#374151',border:'1px solid #E5E7EB',borderRadius:7,fontSize:11,fontWeight:600,cursor:'pointer'}}>📥 Excel</button>
+                      <div style={{padding:'6px 12px',background:'#F0FDF4',color:'#166534',borderRadius:7,fontSize:11,fontWeight:600}}>{inv2.items?.length||0} items</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
