@@ -1,4 +1,4 @@
-import { getAllInvoices, getInvoice } from '../../../../lib/invoices';
+import { getAllInvoices, getInvoice } from '../../../lib/billing';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
