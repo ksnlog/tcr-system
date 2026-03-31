@@ -816,6 +816,124 @@ export default function App() {
       setSfSpares(d.items || []);
     } catch(e) { setSpareMsg('Error deleting'); }
   }
+  // ── SF Spare Inventory / Invoice Functions ────────────────────────────────
+  function addInvoiceItem(spare) {
+    setInvoiceItems(prev => {
+      if (prev.find(i => i.materialCode === spare.materialCode)) return prev;
+      return [...prev, { materialCode: spare.materialCode, description: spare.description, qty: 1, rate: spare.mrp, discount: 0 }];
+    });
+    setInvoiceSearchQ('');
+  }
+  function updateInvoiceLine(code, key, val) {
+    setInvoiceItems(prev => prev.map(i => i.materialCode === code ? { ...i, [key]: parseFloat(val) || 0 } : i));
+  }
+  function removeInvoiceLine(code) {
+    setInvoiceItems(prev => prev.filter(i => i.materialCode !== code));
+  }
+  function calcInvoiceTotals() {
+    const subtotal = invoiceItems.reduce((s, i) => {
+      const lineTotal = (parseFloat(i.rate) || 0) * (parseFloat(i.qty) || 0);
+      const disc = Math.min(parseFloat(i.discount) || 0, lineTotal);
+      return s + lineTotal - disc;
+    }, 0);
+    const taxAmt = Math.round(subtotal * 0.18);
+    return { subtotal, taxAmt, total: subtotal + taxAmt };
+  }
+  async function loadInvoiceHistory() {
+    if (!sfTabSession?.sfId) return;
+    setInvHistLoading(true);
+    try {
+      const r = await fetch('/api/invoices?sfId=' + sfTabSession.sfId);
+      const d = await r.json();
+      setInvoiceHistory(d.invoices || []);
+    } catch(e) {}
+    setInvHistLoading(false);
+  }
+  async function generateInvoicePdf() {
+    if (!invoiceCust.name) return alert('Customer name is required');
+    if (invoiceItems.length === 0) return alert('Add at least one item');
+    const { subtotal, taxAmt, total } = calcInvoiceTotals();
+    const invNo = invoiceNo || ('INV-' + (sfTabSession?.sfId || '') + '-' + Date.now());
+    const invoiceData = {
+      invoiceNo: invNo, date: new Date().toLocaleDateString('en-IN'),
+      customer: invoiceCust, sfName: sfTabSession?.sfName, sfId: sfTabSession?.sfId,
+      taxType: invoiceTaxType, items: invoiceItems, subtotal, taxAmt, total,
+    };
+    try {
+      await fetch('/api/invoices', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sfId: sfTabSession.sfId, invoice: invoiceData }) });
+      await fetch('/api/inventory/spares', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sfId: sfTabSession.sfId, action:'recordUsage',
+          items: invoiceItems.map(i => ({ materialCode: i.materialCode, qty: i.qty })) }) });
+      setSfSpares(prev => {
+        const updated = [...prev];
+        invoiceItems.forEach(ii => {
+          const idx = updated.findIndex(s => s.materialCode === ii.materialCode);
+          if (idx > -1) updated[idx] = { ...updated[idx],
+            stock: Math.max(0, (updated[idx].stock||0) - (parseFloat(ii.qty)||0)) };
+        });
+        return updated;
+      });
+    } catch(e) { console.log('Invoice save error:', e); }
+    try {
+      const { jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+      const doc = new jsPDF({ unit:'mm', format:'a4' });
+      const W=210, M=14; let y=0;
+      doc.setFillColor(29,78,216); doc.rect(0,0,W,28,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      doc.text('TAX INVOICE', M, 13);
+      doc.setFontSize(8); doc.setFont('helvetica','normal');
+      doc.text(sfTabSession?.sfName||'', M, 20);
+      if (sfTabSession?.gst) doc.text('GSTIN: '+sfTabSession.gst, M, 25);
+      doc.text('Invoice No: '+invNo, W-M, 13, {align:'right'});
+      doc.text('Date: '+invoiceData.date, W-M, 20, {align:'right'});
+      y=36;
+      doc.setTextColor(30,30,30); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+      doc.text('Bill To:', M, y); y+=5;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(invoiceCust.name, M, y); y+=4;
+      if (invoiceCust.mobile)  { doc.text('Mobile: '+invoiceCust.mobile, M, y); y+=4; }
+      if (invoiceCust.gstin)   { doc.text('GSTIN: '+invoiceCust.gstin, M, y); y+=4; }
+      if (invoiceCust.address) { doc.text(invoiceCust.address, M, y); y+=4; }
+      y+=4;
+      const rows = invoiceItems.map(i => {
+        const lt=(i.rate||0)*(i.qty||0), disc=Math.min(i.discount||0,lt);
+        return [i.materialCode, i.description, i.qty,
+          'Rs.'+fmtINR(i.rate), i.discount?'-Rs.'+fmtINR(disc):'--', 'Rs.'+fmtINR(lt-disc)];
+      });
+      doc.autoTable({ startY:y, margin:{left:M,right:M},
+        head:[['Code','Description','Qty','Rate','Disc.','Amount']],
+        body:rows, styles:{fontSize:8,cellPadding:2.5},
+        headStyles:{fillColor:[30,30,30],textColor:[255,255,255]}, theme:'grid' });
+      y=doc.lastAutoTable.finalY+8;
+      const bx=W-M-65;
+      doc.setFontSize(8); doc.setTextColor(80,80,80); doc.setFont('helvetica','normal');
+      doc.text('Sub Total',bx,y); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
+      doc.text('Rs.'+fmtINR(subtotal),W-M,y,{align:'right'}); y+=6;
+      if (invoiceTaxType==='intra') {
+        doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+        doc.text('CGST @ 9%',bx,y); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
+        doc.text('Rs.'+fmtINR(Math.round(taxAmt/2)),W-M,y,{align:'right'}); y+=6;
+        doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+        doc.text('SGST @ 9%',bx,y); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
+        doc.text('Rs.'+fmtINR(Math.round(taxAmt/2)),W-M,y,{align:'right'}); y+=6;
+      } else {
+        doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+        doc.text('IGST @ 18%',bx,y); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
+        doc.text('Rs.'+fmtINR(taxAmt),W-M,y,{align:'right'}); y+=6;
+      }
+      doc.setDrawColor(200,200,200); doc.line(bx,y,W-M,y); y+=4;
+      doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(29,78,216);
+      doc.text('TOTAL',bx,y); doc.text('Rs.'+fmtINR(total),W-M,y,{align:'right'});
+      doc.save('Invoice_'+invNo+'.pdf');
+    } catch(e) { console.log('PDF error:',e); }
+    setShowInvoice(false); setInvoiceItems([]);
+    setInvoiceCust({name:'',mobile:'',address:'',gstin:''});
+    setInvoiceNo(''); setInvoiceSearchQ('');
+    setSpareMsg('Invoice generated & downloaded!'); setTimeout(()=>setSpareMsg(''),3000);
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
@@ -1306,25 +1424,20 @@ export default function App() {
                 </div>
                 {masterMsg&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:'#166534',marginBottom:10}}>{masterMsg}</div>}
 
-                {/* Sub-tabs — SFs tab added first */}
-                 {/* Sub-tabs */}
+                {/* Sub-tabs */}
                 <div style={{display:'flex',gap:5,marginBottom:12,overflowX:'auto',paddingBottom:2}}>
                   {[
+                    ['sfs',        '🏢 SFs'],
                     ['stock',      '📊 Stock'],
                     ['technicians','👷 Techs'],
                     ['materials',  '🏷️ Prices'],
-                    ['spares',     '🔩 Spares'],
                     ['records',    '📁 Records'],
                   ].map(([k,l])=>(
-                    <button key={k} onClick={()=>{
-                      setSfSubTab(k);
-                      // lazy-load spares when tab first opened
-                      if (k==='spares' && sfSpares.length===0 && sfTabSession?.sfId) loadSpares(sfTabSession.sfId);
-                    }}
+                    <button key={k} onClick={()=>setMasterTab(k)}
                       style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',
-                        background: sfSubTab===k ? 'white':'rgba(255,255,255,.5)',
-                        color:      sfSubTab===k ? (k==='spares'?'#7C3AED':'#1D4ED8'):'#6B7280',
-                        boxShadow:  sfSubTab===k ? '0 2px 8px rgba(0,0,0,.1)':'none'
+                        background: masterTab===k ? 'white':'rgba(255,255,255,.5)',
+                        color:      masterTab===k ? '#1D4ED8':'#6B7280',
+                        boxShadow:  masterTab===k ? '0 2px 8px rgba(0,0,0,.1)':'none'
                       }}>
                       {l}
                     </button>
@@ -1733,8 +1846,16 @@ export default function App() {
 
                 {/* Sub-tabs */}
                 <div style={{display:'flex',gap:5,marginBottom:12,overflowX:'auto',paddingBottom:2}}>
-                  {[['stock','📊 Stock'],['technicians','👷 Techs'],['materials','🏷️ Prices'],['records','📁 Records']].map(([k,l])=>(
-                    <button key={k} onClick={()=>setSfSubTab(k)} style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',background:sfSubTab===k?'white':'rgba(255,255,255,.5)',color:sfSubTab===k?'#1D4ED8':'#6B7280',boxShadow:sfSubTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'}}>{l}</button>
+                  {[['stock','📊 Stock'],['technicians','👷 Techs'],['materials','🏷️ Prices'],['records','📁 Records'],['spares','🔩 Spares']].map(([k,l])=>(
+                    <button key={k} onClick={()=>{
+                      setSfSubTab(k);
+                      if (k==='spares' && sfSpares.length===0 && sfTabSession?.sfId) loadSpares(sfTabSession.sfId);
+                    }}
+                      style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',
+                        background: sfSubTab===k?'white':'rgba(255,255,255,.5)',
+                        color:      sfSubTab===k?(k==='spares'?'#7C3AED':'#1D4ED8'):'#6B7280',
+                        boxShadow:  sfSubTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'
+                      }}>{l}</button>
                   ))}
                 </div>
 
