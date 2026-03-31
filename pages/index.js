@@ -1909,76 +1909,8 @@ export default function App() {
                     </div>
                   </div>
                 )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════ MY STOCK TAB ═══ */}
-      {mainTab==='inventory' && (
-        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
-          <div style={{maxWidth:480,margin:'0 auto'}}>
-            {!techAuthed ? (
-              <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
-                <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:360,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
-                  <div style={{fontSize:36,marginBottom:12}}>🔧</div>
-                  <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>My Inventory</div>
-                  <div style={{fontSize:12,color:'#6B7280',marginBottom:24}}>Enter your Technician ID</div>
-                  <input value={myTechId} onChange={e=>setMyTechId(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&techLogin()} placeholder="e.g. TECH001"
-                    style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center',letterSpacing:2,fontFamily:'monospace'}}/>
-                  {techErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{techErr}</div>}
-                  <button onClick={techLogin} disabled={techLoading} style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer'}}>
-                    {techLoading?'Loading...':'View My Stock'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div style={{background:'linear-gradient(135deg,#E8001D,#9B0013)',borderRadius:14,padding:'14px 16px',color:'white',marginBottom:12}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <div>
-                      <div style={{fontSize:14,fontWeight:700}}>🔧 {techData?.tech?.name}</div>
-                      <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginTop:2,fontFamily:'monospace'}}>ID: {techData?.tech?.id}</div>
-                    </div>
-                    <button onClick={techRefresh} style={{background:'rgba(255,255,255,.2)',border:'none',color:'white',padding:'6px 12px',borderRadius:8,fontSize:11,cursor:'pointer'}}>{techLoading?'...':'↻ Refresh'}</button>
-                  </div>
-                </div>
-                {(()=>{
-                  const {stock,materials:mats}=techData||{};
-                  const zi=(mats||[]).filter(m=>((stock||{})[m.id]||0)===0);
-                  return (<>
-                    {zi.length>0&&(
-                      <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
-                        <div style={{fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:4}}>⚠️ Zero Stock Alert</div>
-                        {zi.map(m=><div key={m.id} style={{fontSize:11,color:'#DC2626'}}>• {m.name}{m.sub?' ('+m.sub+')':''} — 0 {m.unit}</div>)}
-                      </div>
-                    )}
-                    <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-                      <div style={{background:'#111827',padding:'8px 14px',display:'grid',gridTemplateColumns:'1fr 80px 70px'}}>
-                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>MATERIAL</div>
-                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'center'}}>STOCK</div>
-                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>UNIT</div>
-                      </div>
-                      {(mats||[]).map(m=>{const qty=((stock||{})[m.id]||0);const zero=qty===0;return(
-                        <div key={m.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 70px',padding:'10px 14px',borderBottom:'1px solid #F3F4F6',background:zero?'#FFF5F5':'white',alignItems:'center'}}>
-                          <div><div style={{fontSize:12,fontWeight:500,color:zero?'#DC2626':'#111827'}}>{m.name}</div>{m.sub&&<div style={{fontSize:10,color:'#6B7280'}}>{m.sub}</div>}</div>
-                          <div style={{textAlign:'center',fontFamily:'monospace',fontSize:14,fontWeight:700,color:zero?'#DC2626':'#16A34A'}}>{zero?'⚠️ 0':qty}</div>
-                          <div style={{textAlign:'right',fontSize:11,color:'#6B7280'}}>{m.unit}</div>
-                        </div>
-                      );})}
-                    </div>
-                    <div style={{textAlign:'center',marginTop:16,fontSize:10,color:'#9CA3AF'}}>Stock deducts automatically when TCR is submitted</div>
-                    <button onClick={async()=>{
-                      const r=await fetch('/api/records?techId='+myTechId.trim().toUpperCase());
-                      const d=await r.json();
-                      downloadExcel(d,'TCR_'+myTechId.trim().toUpperCase()+'.xlsx');
-                    }} style={{width:'100%',marginTop:12,padding:'11px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:9,fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
-                      <svg width="15" height="15" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/></svg>
-                      Download My TCR Records (Excel)
-      
-                    </button>
-                        {!sfTabDataLoading && sfSubTab==='spares' && (
+                {/* ─── SPARES SUB-TAB ─── */}
+                {!sfTabDataLoading && sfSubTab==='spares' && (
                   <div>
                     {spareMsg && (
                       <div style={{background: spareMsg.startsWith('✅')?'#F0FDF4':'#FFF0F0',
@@ -2387,6 +2319,76 @@ export default function App() {
                     )}
                   </div>
                 )}
+
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════ MY STOCK TAB ═══ */}
+      {mainTab==='inventory' && (
+        <div style={{minHeight:'100vh',background:'#F3F4F6',padding:'12px 8px 20px'}}>
+          <div style={{maxWidth:480,margin:'0 auto'}}>
+            {!techAuthed ? (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+                <div style={{background:'white',borderRadius:16,padding:32,width:'100%',maxWidth:360,boxShadow:'0 4px 20px rgba(0,0,0,.1)',textAlign:'center'}}>
+                  <div style={{fontSize:36,marginBottom:12}}>🔧</div>
+                  <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>My Inventory</div>
+                  <div style={{fontSize:12,color:'#6B7280',marginBottom:24}}>Enter your Technician ID</div>
+                  <input value={myTechId} onChange={e=>setMyTechId(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&techLogin()} placeholder="e.g. TECH001"
+                    style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E5E7EB',borderRadius:10,fontSize:14,marginBottom:8,outline:'none',textAlign:'center',letterSpacing:2,fontFamily:'monospace'}}/>
+                  {techErr&&<div style={{color:'#DC2626',fontSize:12,marginBottom:8}}>{techErr}</div>}
+                  <button onClick={techLogin} disabled={techLoading} style={{width:'100%',padding:12,background:'linear-gradient(135deg,#E8001D,#9B0013)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                    {techLoading?'Loading...':'View My Stock'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{background:'linear-gradient(135deg,#E8001D,#9B0013)',borderRadius:14,padding:'14px 16px',color:'white',marginBottom:12}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700}}>🔧 {techData?.tech?.name}</div>
+                      <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginTop:2,fontFamily:'monospace'}}>ID: {techData?.tech?.id}</div>
+                    </div>
+                    <button onClick={techRefresh} style={{background:'rgba(255,255,255,.2)',border:'none',color:'white',padding:'6px 12px',borderRadius:8,fontSize:11,cursor:'pointer'}}>{techLoading?'...':'↻ Refresh'}</button>
+                  </div>
+                </div>
+                {(()=>{
+                  const {stock,materials:mats}=techData||{};
+                  const zi=(mats||[]).filter(m=>((stock||{})[m.id]||0)===0);
+                  return (<>
+                    {zi.length>0&&(
+                      <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
+                        <div style={{fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:4}}>⚠️ Zero Stock Alert</div>
+                        {zi.map(m=><div key={m.id} style={{fontSize:11,color:'#DC2626'}}>• {m.name}{m.sub?' ('+m.sub+')':''} — 0 {m.unit}</div>)}
+                      </div>
+                    )}
+                    <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{background:'#111827',padding:'8px 14px',display:'grid',gridTemplateColumns:'1fr 80px 70px'}}>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>MATERIAL</div>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'center'}}>STOCK</div>
+                        <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>UNIT</div>
+                      </div>
+                      {(mats||[]).map(m=>{const qty=((stock||{})[m.id]||0);const zero=qty===0;return(
+                        <div key={m.id} style={{display:'grid',gridTemplateColumns:'1fr 80px 70px',padding:'10px 14px',borderBottom:'1px solid #F3F4F6',background:zero?'#FFF5F5':'white',alignItems:'center'}}>
+                          <div><div style={{fontSize:12,fontWeight:500,color:zero?'#DC2626':'#111827'}}>{m.name}</div>{m.sub&&<div style={{fontSize:10,color:'#6B7280'}}>{m.sub}</div>}</div>
+                          <div style={{textAlign:'center',fontFamily:'monospace',fontSize:14,fontWeight:700,color:zero?'#DC2626':'#16A34A'}}>{zero?'⚠️ 0':qty}</div>
+                          <div style={{textAlign:'right',fontSize:11,color:'#6B7280'}}>{m.unit}</div>
+                        </div>
+                      );})}
+                    </div>
+                    <div style={{textAlign:'center',marginTop:16,fontSize:10,color:'#9CA3AF'}}>Stock deducts automatically when TCR is submitted</div>
+                    <button onClick={async()=>{
+                      const r=await fetch('/api/records?techId='+myTechId.trim().toUpperCase());
+                      const d=await r.json();
+                      downloadExcel(d,'TCR_'+myTechId.trim().toUpperCase()+'.xlsx');
+                    }} style={{width:'100%',marginTop:12,padding:'11px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',border:'none',borderRadius:9,fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
+                      <svg width="15" height="15" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/></svg>
+                      Download My TCR Records (Excel)
+      
+                    </button>
                   </>);
                 })()}
               </>
