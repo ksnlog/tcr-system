@@ -28,6 +28,16 @@ const tonOptions = [
   {v:"window", l:"Window AC"},
 ];
 const fmtINR = n => Number(n||0).toLocaleString('en-IN');
+const numToWords = n => {
+  if (!n) return 'Zero Rupees Only';
+  const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const b=['','Ten','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  const k=(n,l)=>{let s='';n=Math.floor(n);if(n>100){s=a[Math.floor(n/100)]+' Hundred ';n%=100;}if(n>19)s+=b[Math.floor(n/10)]+(n%10?' '+a[n%10]:'');else s+=a[n];return s.trim();};
+  if(n>=10000000)return k(Math.floor(n/10000000))+' Crore '+k(Math.floor((n%10000000)/100000))+' Lakh '+k(Math.floor((n%100000)/1000))+' Thousand '+k(n%1000)+(l?' '+l:'');
+  if(n>=100000)return k(Math.floor(n/100000))+' Lakh '+k(Math.floor((n%100000)/1000))+' Thousand '+k(n%1000)+(l?' '+l:'');
+  if(n>=1000)return k(Math.floor(n/1000))+' Thousand '+k(n%1000)+(l?' '+l:'');
+  return k(n)+(l?' '+l:'');
+};
 
 export default function App() {
   const [mainTab, setMainTab] = useState('tcr');
@@ -85,6 +95,13 @@ export default function App() {
   const [addQty, setAddQty] = useState('');
   const [addCost, setAddCost] = useState('');
   const [editMats, setEditMats] = useState([]);
+
+  // ── Price List State (Master) ─────────────────────────────────────────────
+  const [priceList, setPriceList] = useState([]);
+  const [priceMsl, setPriceMsl] = useState(0);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [priceMsg, setPriceMsg] = useState('');
+  const [priceUploading, setPriceUploading] = useState(false);
 
   // ── SF Management State (Master) ──────────────────────────────────────────
   const [sfs, setSfs] = useState([]);
@@ -520,6 +537,56 @@ export default function App() {
     setMaterials(editMats); setMasterMsg('Prices saved!'); setTimeout(()=>setMasterMsg(''),3000);
   }
   function getStockVal(tid) { const s=allStock[tid]||{}; let v=0; materials.forEach(m=>{v+=(s[m.id]||0)*m.costPrice;}); return v; }
+
+  // ── Price List Functions ───────────────────────────────────────────────────
+  const MASTER_PWD = 'Project@1';
+  async function loadPriceList() {
+    setPriceLoading(true);
+    try {
+      const res = await fetch('/api/pricelist');
+      const json = await res.json();
+      setPriceList(json.items || []);
+      setPriceMsl(json.msl || 0);
+    } catch(e) { setPriceMsg('Error loading price list'); }
+    setPriceLoading(false);
+  }
+  async function handlePriceUpload(e) {
+    const file = e.target.files[0]; if (!file) return;
+    setPriceUploading(true); setPriceMsg('');
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = await import('xlsx').then(m => m.default || m);
+      const wb = workbook.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = workbook.utils.sheet_to_json(ws);
+      const res = await fetch('/api/pricelist/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: MASTER_PWD, data: json })
+      });
+      const result = await res.json();
+      if (!res.ok) return setPriceMsg(result.error || 'Upload failed');
+      setPriceMsg(`Uploaded ${result.count} items (${result.total} total)`);
+      await loadPriceList();
+    } catch(err) { setPriceMsg('Error: ' + err.message); }
+    setPriceUploading(false); e.target.value = '';
+  }
+  function downloadPriceList() {
+    const rows = priceList.map(item => ({
+      'Material Code': item.materialCode || '', 'Description': item.description || '',
+      'DP': item.dp || 0, 'MRP': item.mrp || 0, 'Unit': item.unit || 'No.', 'HSN': item.hsn || ''
+    }));
+    import('xlsx').then(async (mod) => {
+      const XLSX = mod.default || mod;
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Price List');
+      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([buf], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'PRICE_LIST.xlsx'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 
   // ── SF Management Functions ────────────────────────────────────────────────
   async function doMasterLogin() {
@@ -1432,8 +1499,9 @@ export default function App() {
                     ['technicians','👷 Techs'],
                     ['materials',  '🏷️ Prices'],
                     ['records',    '📁 Records'],
+                    ['pricelist',  '📋 Price List'],
                   ].map(([k,l])=>(
-                    <button key={k} onClick={()=>setMasterTab(k)}
+                    <button key={k} onClick={()=>{setMasterTab(k); if(k==='pricelist') loadPriceList();}}
                       style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',
                         background: masterTab===k ? 'white':'rgba(255,255,255,.5)',
                         color:      masterTab===k ? '#1D4ED8':'#6B7280',
@@ -1755,6 +1823,55 @@ export default function App() {
                       ))}
                       {techs.length===0&&<div style={{color:'#9CA3AF',fontSize:12,textAlign:'center',padding:16}}>No technicians added yet</div>}
                     </div>
+                  </div>
+                )}
+
+                {/* ─── PRICE LIST TAB ─── */}
+                {!masterLoading&&masterTab==='pricelist'&&(
+                  <div>
+                    <div style={{background:'white',borderRadius:12,padding:16,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                      <div style={{fontSize:12,fontWeight:700,marginBottom:6}}>📋 Price List (Bulk Upload / Download)</div>
+                      <div style={{fontSize:11,color:'#6B7280',marginBottom:12}}>CSV columns: <strong>Material Code, Description, DP, MRP</strong> (Unit & HSN optional)</div>
+                      {priceMsg&&<div style={{background:priceMsg.includes('Error')?'#FEF2F2':'#F0FDF4',border:'1px solid',borderColor:priceMsg.includes('Error')?'#FECACA':'#BBF7D0',borderRadius:8,padding:'8px 12px',fontSize:12,color:priceMsg.includes('Error')?'#DC2626':'#166534',marginBottom:10}}>{priceMsg}</div>}
+                      <div style={{display:'flex',gap:8}}>
+                        <label style={{flex:1,textAlign:'center',padding:'10px',background:'linear-gradient(135deg,#16A34A,#15803D)',color:'white',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                          {priceUploading?'Uploading...':'📤 Upload CSV / Excel'}
+                          <input type="file" accept=".csv,.xlsx,.xls" onChange={handlePriceUpload} style={{display:'none'}} disabled={priceUploading}/>
+                        </label>
+                        <button onClick={downloadPriceList} disabled={priceList.length===0} style={{flex:1,padding:'10px',background:priceList.length===0?'#9CA3AF':'linear-gradient(135deg,#1D4ED8,#1E40AF)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:priceList.length===0?'not-allowed':'pointer'}}>📥 Download</button>
+                      </div>
+                      <div style={{fontSize:10,color:'#9CA3AF',marginTop:8,textAlign:'center'}}>{priceList.length} items uploaded</div>
+                    </div>
+                    {priceList.length>0&&(
+                      <div style={{background:'white',borderRadius:12,padding:14,marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                        <div style={{textAlign:'center',padding:'10px 14px',background:'linear-gradient(135deg,#111827,#1F2937)',borderRadius:10,marginBottom:4}}>
+                          <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginBottom:2}}>MSL AMOUNT (Total DP Value)</div>
+                          <div style={{fontSize:22,fontWeight:700,color:'white',fontFamily:'DM Mono,monospace'}}>Rs. {fmtINR(priceMsl)} /-</div>
+                          <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginTop:2}}>Rupees {numToWords(Math.floor(priceMsl))} Only</div>
+                        </div>
+                      </div>
+                    )}
+                    {priceList.length>0&&(
+                      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
+                        <div style={{background:'#111827',padding:'8px 14px',display:'grid',gridTemplateColumns:'100px 1fr 70px 70px',gap:6}}>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>MAT CODE</div>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)'}}>DESCRIPTION</div>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>DP</div>
+                          <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,.6)',textAlign:'right'}}>MRP</div>
+                        </div>
+                        <div style={{maxHeight:400,overflowY:'auto'}}>
+                          {priceList.slice(0,100).map((item,i)=>(
+                            <div key={item.materialCode+i} style={{display:'grid',gridTemplateColumns:'100px 1fr 70px 70px',gap:6,padding:'9px 14px',borderBottom:'1px solid #F3F4F6',alignItems:'center'}}>
+                              <div style={{fontSize:11,fontFamily:'monospace',color:'#374151',fontWeight:600}}>{item.materialCode}</div>
+                              <div style={{fontSize:12,color:'#111827'}}>{item.description}</div>
+                              <div style={{fontSize:12,textAlign:'right',fontFamily:'monospace',color:'#16A34A',fontWeight:600}}>₹{fmtINR(item.dp)}</div>
+                              <div style={{fontSize:12,textAlign:'right',fontFamily:'monospace',color:'#374151'}}>₹{fmtINR(item.mrp)}</div>
+                            </div>
+                          ))}
+                          {priceList.length>100&&<div style={{padding:'10px',textAlign:'center',fontSize:11,color:'#9CA3AF'}}>Showing 100 of {priceList.length} items</div>}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
