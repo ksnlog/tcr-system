@@ -13,6 +13,7 @@ export default function ConfirmPage() {
   const [consent, setConsent] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmResult, setConfirmResult] = useState(null);
+  const [blockedMsg, setBlockedMsg] = useState('');
   const pdfBlobRef = useRef(null);
 
   useEffect(() => {
@@ -48,6 +49,12 @@ export default function ConfirmPage() {
         body: JSON.stringify({ token, location }),
       });
       const json = await res.json();
+      if (res.status === 403 && json.error === 'same_device') {
+        setBlockedMsg(json.message);
+        setScreen('blocked');
+        setConfirming(false);
+        return;
+      }
       if (!res.ok) { alert(json.message || 'Error. Please try again.'); setConfirming(false); return; }
       setConfirmResult(json);
       await buildPDF(data, json, location);
@@ -185,6 +192,16 @@ export default function ConfirmPage() {
           {screen==='loading'&&<div className="loading"><div className="spin"/><p style={{fontSize:12,color:'#6B7280'}}>Loading charge summary…</p></div>}
           {screen==='expired'&&<div className="stt"><div className="se">⏰</div><div className="stitle">Link Expired</div><div className="smsg">This link has expired (30 min limit).<br/>Ask your technician to resend.</div></div>}
           {screen==='already'&&<div className="stt"><div className="se">✅</div><div className="stitle">Already Confirmed</div><div className="smsg">This TCR has already been confirmed. Thank you!</div></div>}
+          {screen==='blocked'&&<div className="stt">
+            <div className="se">🚫</div>
+            <div className="stitle" style={{color:'#DC2626'}}>Approval Blocked</div>
+            <div className="smsg" style={{marginBottom:12}}>{blockedMsg}</div>
+            <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'12px 14px',fontSize:11,color:'#7F1D1D',textAlign:'left',lineHeight:1.7}}>
+              <strong>⚠️ Security Notice:</strong><br/>
+              This link must be opened on the <strong>customer's own phone</strong>. The technician cannot approve this on behalf of the customer.<br/><br/>
+              If you are the customer, please open this link directly from the WhatsApp message on your own device.
+            </div>
+          </div>}
           {screen==='review'&&data&&<>
             <div className="sec">
               <div className="shead">📋 Service Details</div>

@@ -42,7 +42,21 @@ export default async function handler(req, res) {
       });
     }
 
-    // ── Mark as confirmed ──
+    // ── Same-device fraud check (IP + User-Agent fingerprint) ──
+    // Block if BOTH the IP and User-Agent match the submitting device.
+    // This prevents the technician from self-approving the TCR.
+    const confirmerIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+    const confirmerUA = req.headers['user-agent'] || '';
+
+    const sameIp = confirmerIp && data._submitterIp && confirmerIp === data._submitterIp;
+    const sameUA = confirmerUA && data._submitterUA && confirmerUA === data._submitterUA;
+
+    if (sameIp && sameUA) {
+      return res.status(403).json({
+        error: 'same_device',
+        message: 'This confirmation cannot be approved from the same device that generated the TCR. Please open the link on the customer\'s own phone.',
+      });
+    }
     const confirmed = await confirmToken(token);
 
     return res.status(200).json({

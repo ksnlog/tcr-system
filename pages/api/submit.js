@@ -43,12 +43,19 @@ export default async function handler(req, res) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}`;
     const confirmUrl = `${baseUrl}/confirm/${token}`;
 
+    // ── Capture submitter device fingerprint (IP + User-Agent) ──
+    // Used later to block same-device approval fraud
+    const submitterIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+    const submitterUA = req.headers['user-agent'] || '';
+
     // ── Store token + TCR data ──
     await saveToken(token, {
       ...data,
       confirmed: false,
       submittedAt: new Date().toISOString(),
       confirmUrl,
+      _submitterIp: submitterIp,
+      _submitterUA: submitterUA,
     });
 
     // ── Build WhatsApp deep link (technician opens this, taps Send) ──
