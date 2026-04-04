@@ -111,7 +111,7 @@ export default function App() {
   const [sparesLoading, setSparesLoading] = useState(false);
   const [sparesSearch, setSparesSearch]   = useState('');
   const [showAddSpare, setShowAddSpare]   = useState(false);
-  const [newSpare, setNewSpare]           = useState({ materialCode:'', description:'', dp:'', mrp:'', stock:'', location:'' });
+  const [newSpare, setNewSpare]           = useState({ materialCode:'', description:'', dp:'', mrp:'', stock:'', location:'', hsn:'', purchaseDetails:'' });
   const [spareMsg, setSpareMsg]           = useState('');
   const [stockAdjItem, setStockAdjItem]   = useState(null);   // materialCode being adjusted
   const [stockAdjQty, setStockAdjQty]     = useState('');
@@ -810,18 +810,19 @@ export default function App() {
   }
  
   async function addSpare() {
-    const { materialCode, description, dp, mrp, stock, location } = newSpare;
+    const { materialCode, description, dp, mrp, stock, location, hsn, purchaseDetails } = newSpare;
     if (!materialCode.trim() || !description.trim()) return setSpareMsg('Material code and description are required');
+    if (!purchaseDetails || !purchaseDetails.trim()) return setSpareMsg('Purchase details (Purchased From) are mandatory');
     setSparesLoading(true);
     try {
       const r = await fetch('/api/inventory/spares', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ sfId: sfTabSession.sfId, action:'addItem', materialCode, description, dp, mrp, stock, location })
+        body: JSON.stringify({ sfId: sfTabSession.sfId, action:'addItem', materialCode, description, dp, mrp, stock, location, hsn, purchaseDetails })
       });
       const d = await r.json();
       if (d.error) { setSpareMsg(d.error); setSparesLoading(false); return; }
       setSfSpares(d.items || []);
-      setNewSpare({ materialCode:'', description:'', dp:'', mrp:'', stock:'', location:'' });
+      setNewSpare({ materialCode:'', description:'', dp:'', mrp:'', stock:'', location:'', hsn:'', purchaseDetails:'' });
       setShowAddSpare(false);
       setSpareMsg('✅ Spare added!'); setTimeout(()=>setSpareMsg(''), 3000);
     } catch(e) { setSpareMsg('Network error'); }
@@ -900,7 +901,7 @@ export default function App() {
   }
   setInvoiceItems(prev => {
     if (prev.find(i => i.materialCode === spare.materialCode)) return prev;
-    return [...prev, { materialCode: spare.materialCode, description: spare.description, qty: 1, rate: spare.mrp, discount: 0 }];
+    return [...prev, { materialCode: spare.materialCode, description: spare.description, qty: 1, rate: spare.mrp, discount: 0, hsn: spare.hsn }];
   });
   setInvoiceSearchQ('');
 }
@@ -1091,7 +1092,7 @@ export default function App() {
         const qty = parseFloat(item.qty) || 0;
         const rowVals = [
           String(idx + 1),
-          item.materialCode || '',
+          item.hsn || '',
           item.description || '',
           qty.toFixed(3),
           item.unit || 'Pc',
@@ -3407,10 +3408,24 @@ export default function App() {
                                   style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none',fontFamily:'monospace'}}/>
                               </div>
                             </div>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>📍 Location (e.g. Bin 1)</label>
+                                <input value={newSpare.location} onChange={e=>setNewSpare(p=>({...p,location:e.target.value}))}
+                                  placeholder="e.g. Bin 1, Rack 3..."
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none'}}/>
+                              </div>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>HSN Code</label>
+                                <input value={newSpare.hsn} onChange={e=>setNewSpare(p=>({...p,hsn:e.target.value}))}
+                                  placeholder="e.g. 841590"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none',fontFamily:'monospace',letterSpacing:1}}/>
+                              </div>
+                            </div>
                             <div style={{marginBottom:10}}>
-                              <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>📍 Location (e.g. Bin 1, Shelf A)</label>
-                              <input value={newSpare.location} onChange={e=>setNewSpare(p=>({...p,location:e.target.value}))}
-                                placeholder="e.g. Bin 1, Rack 3, Shelf B"
+                              <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Purchased From * (Mandatory)</label>
+                              <input value={newSpare.purchaseDetails} onChange={e=>setNewSpare(p=>({...p,purchaseDetails:e.target.value}))}
+                                placeholder="Vendor name, bill number, tracking..."
                                 style={{width:'100%',padding:'7px 8px',border:'1.5px solid #DDD6FE',borderRadius:7,fontSize:12,outline:'none'}}/>
                             </div>
                             <button onClick={addSpare} disabled={sparesLoading}
@@ -3512,6 +3527,10 @@ export default function App() {
                                         {s.location || '+ Add location'}
                                       </span>
                                     )}
+                                    <span style={{fontSize:10,color:'#6B7280',marginLeft:8}}>HSN:</span>
+                                    <span style={{fontSize:10,fontWeight:600,color:'#374151',fontFamily:'monospace'}}>{s.hsn||'N/A'}</span>
+                                    <span style={{fontSize:10,color:'#6B7280',marginLeft:8}}>Purchased From:</span>
+                                    <span style={{fontSize:10,fontWeight:600,color:'#374151',display:'inline-block',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.purchaseDetails||'—'}</span>
                                   </div>
                                 </div>
                                 {/* Stock qty */}

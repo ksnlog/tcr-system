@@ -34,12 +34,16 @@ export default async function handler(req, res) {
 
     // ── addItem ──
     if (action === 'addItem') {
-      const { materialCode, description, dp, mrp, stock } = payload;
+      const { materialCode, description, dp, mrp, stock, hsn, purchaseDetails } = payload;
       if (!materialCode?.trim() || !description?.trim())
         return res.status(400).json({ error: 'Material code and description are required' });
+      if (!purchaseDetails?.trim())
+        return res.status(400).json({ error: 'Purchase details (Purchased From) are mandatory' });
+        
       const code = materialCode.trim().toUpperCase();
       if (data.items.find(i => i.materialCode === code))
         return res.status(400).json({ error: 'Material code already exists' });
+        
       data.items.push({
         materialCode: code,
         description: description.trim(),
@@ -47,6 +51,8 @@ export default async function handler(req, res) {
         mrp: parseFloat(mrp) || 0,
         stock: parseFloat(stock) || 0,
         location: (payload.location || '').trim(),
+        hsn: (hsn || '').trim(),
+        purchaseDetails: purchaseDetails.trim(),
         usageCount: 0,
         totalQtySold: 0,
         createdAt: Date.now(),
@@ -86,13 +92,15 @@ export default async function handler(req, res) {
 
     // ── updateItem ──
     if (action === 'updateItem') {
-      const { materialCode, description, dp, mrp, location } = payload;
+      const { materialCode, description, dp, mrp, location, hsn, purchaseDetails } = payload;
       const item = data.items.find(i => i.materialCode === materialCode);
       if (!item) return res.status(404).json({ error: 'Material not found' });
       if (description !== undefined) item.description = description.trim();
       if (dp !== undefined) item.dp = parseFloat(dp) || 0;
       if (mrp !== undefined) item.mrp = parseFloat(mrp) || 0;
       if (location !== undefined) item.location = location.trim();
+      if (hsn !== undefined) item.hsn = hsn.trim();
+      if (purchaseDetails !== undefined) item.purchaseDetails = purchaseDetails.trim();
       await redis.set(key, data);
       return res.json(data);
     }
@@ -109,25 +117,32 @@ export default async function handler(req, res) {
     if (action === 'bulkUpload') {
       const { items } = payload;
       if (!Array.isArray(items)) return res.status(400).json({ error: 'items array required' });
-      let added = 0, updated = 0;
+      let added = 0, updated = 0, rejected = 0;
       items.forEach(row => {
         const code = String(row.materialCode || row['Material Code'] || '').trim().toUpperCase();
         const desc = String(row.description || row['Description'] || '').trim();
         const dpVal = parseFloat(row.dp || row['DP'] || 0) || 0;
         const mrpVal = parseFloat(row.mrp || row['MRP'] || 0) || 0;
+        const hsnVal = String(row.hsn || row['HSN'] || row['HSN Code'] || '').trim();
+        const pdVal = String(row.purchaseDetails || row['Purchase Details'] || row['Purchased From'] || '').trim();
+        
         if (!code) return;
         const idx = data.items.findIndex(i => i.materialCode === code);
         if (idx >= 0) {
-          data.items[idx] = { ...data.items[idx], description: desc || data.items[idx].description, dp: dpVal, mrp: mrpVal };
+          data.items[idx] = { ...data.items[idx], description: desc || data.items[idx].description, dp: dpVal, mrp: mrpVal, hsn: hsnVal || data.items[idx].hsn, purchaseDetails: pdVal || data.items[idx].purchaseDetails };
           updated++;
         } else {
+          if (!pdVal) {
+            rejected++;
+            return;
+          }
           const loc = String(row.location || row['Location'] || '').trim();
-          data.items.push({ materialCode: code, description: desc, dp: dpVal, mrp: mrpVal, stock: 0, location: loc, usageCount: 0, totalQtySold: 0, createdAt: Date.now() });
+          data.items.push({ materialCode: code, description: desc, dp: dpVal, mrp: mrpVal, stock: 0, location: loc, hsn: hsnVal, purchaseDetails: pdVal, usageCount: 0, totalQtySold: 0, createdAt: Date.now() });
           added++;
         }
       });
       await redis.set(key, data);
-      return res.json({ ...data, message: `Added ${added}, updated ${updated} items` });
+      return res.json({ ...data, message: `Added ${added}, updated ${updated} items. Rejected ${rejected} due to missing Purchase Details.` });
     }
 
     return res.status(400).json({ error: 'Unknown action' });
