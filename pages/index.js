@@ -2824,15 +2824,15 @@ export default function App() {
 
                 {/* Sub-tabs */}
                 <div style={{display:'flex',gap:5,marginBottom:12,overflowX:'auto',paddingBottom:2}}>
-                  {[['stock','📊 Stock'],['technicians','👷 Techs'],['materials','🏷️ Prices'],['records','📁 Records'],['spares','🔩 Spares'],['billregister','🧾 Bill Register']].map(([k,l])=>(
+                  {[['stock','📊 Stock'],['technicians','👷 Techs'],['materials','🏷️ Prices'],['records','📁 Records'],['billregister','🧾 Bill Register'],['outstanding','⏳ Pending Payments'],['spares','🔩 Spares']].map(([k,l])=>(
                     <button key={k} onClick={()=>{
                       setSfSubTab(k);
                       if (k==='spares' && sfSpares.length===0 && sfTabSession?.sfId) loadSpares(sfTabSession.sfId);
-                      if (k==='billregister') loadBillRegister();
+                      if (k==='billregister' || k==='outstanding') loadBillRegister();
                     }}
                       style={{flexShrink:0,padding:'9px 12px',border:'none',borderRadius:10,fontFamily:'inherit',fontSize:11,fontWeight:600,cursor:'pointer',
                         background: sfSubTab===k?'white':'rgba(255,255,255,.5)',
-                        color:      sfSubTab===k?(k==='spares'?'#7C3AED':k==='billregister'?'#B45309':'#1D4ED8'):'#6B7280',
+                        color:      sfSubTab===k?(k==='spares'?'#7C3AED':(k==='billregister'||k==='outstanding')?'#B45309':'#1D4ED8'):'#6B7280',
                         boxShadow:  sfSubTab===k?'0 2px 8px rgba(0,0,0,.1)':'none'
                       }}>{l}</button>
                   ))}
@@ -3122,6 +3122,101 @@ export default function App() {
                                       </td>
                                     </tr>
                                   ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* ─── OUTSTANDING SUB-TAB ─── */}
+                {!sfTabDataLoading && sfSubTab==='outstanding' && (
+                  <div>
+                    {billRegLoading && <div style={{textAlign:'center',padding:32,color:'#9CA3AF'}}>Loading pending invoices…</div>}
+                    {!billRegLoading && (() => {
+                      const pending = billRegister.filter(inv => !inv.paymentReceived);
+                      const totalOut = pending.reduce((s, inv) => s + (parseFloat(inv.total)||0), 0);
+                      
+                      const getAgeing = (dateStr) => {
+                        if (!dateStr) return '—';
+                        const match = dateStr.match(/^(\d{2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})$/i);
+                        if (!match) return '—';
+                        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+                        const d = new Date(parseInt(match[3]), months[match[2].toLowerCase()], parseInt(match[1]));
+                        const diff = Date.now() - d.getTime();
+                        if (diff < 0) return '0 days';
+                        return Math.floor(diff / (1000 * 60 * 60 * 24)) + ' days';
+                      };
+
+                      return (
+                        <>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+                            <div style={{background:'#FEF2F2',borderRadius:9,padding:'12px',textAlign:'center'}}>
+                                <div style={{fontSize:14,fontWeight:700,color:'#DC2626',fontFamily:'monospace'}}>{pending.length}</div>
+                                <div style={{fontSize:10,fontWeight:600,color:'#DC2626',marginTop:2}}>Total Pending Invoices</div>
+                            </div>
+                            <div style={{background:'#FFFBEB',borderRadius:9,padding:'12px',textAlign:'center'}}>
+                                <div style={{fontSize:14,fontWeight:700,color:'#D97706',fontFamily:'monospace'}}>₹{fmtINR(Math.round(totalOut))}</div>
+                                <div style={{fontSize:10,fontWeight:600,color:'#D97706',marginTop:2}}>Total Outstanding</div>
+                            </div>
+                          </div>
+
+                          {pending.length === 0 && (
+                            <div style={{background:'white',borderRadius:10,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:12}}>
+                              No pending payments! 🎉
+                            </div>
+                          )}
+
+                          {pending.length > 0 && (
+                            <div style={{background:'white',borderRadius:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)',overflowX:'auto'}}>
+                              <table style={{width:'100%',borderCollapse:'collapse',fontSize:11,textAlign:'left'}}>
+                                <thead>
+                                  <tr style={{background:'#F3F4F6',borderBottom:'2px solid #E5E7EB'}}>
+                                    <th style={{padding:'12px',fontWeight:700,color:'#374151'}}>Customer & Invoice</th>
+                                    <th style={{padding:'12px',fontWeight:700,color:'#374151',whiteSpace:'nowrap'}}>Date & Ageing</th>
+                                    <th style={{padding:'12px',fontWeight:700,color:'#374151',whiteSpace:'nowrap'}}>Amount Left</th>
+                                    <th style={{padding:'12px',fontWeight:700,color:'#374151',whiteSpace:'nowrap'}}>Mark Paid</th>
+                                    <th style={{padding:'12px',fontWeight:700,color:'#374151',textAlign:'right'}}>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {pending.map(inv => {
+                                    const mobileReady = inv.customer?.mobile ? inv.customer.mobile.replace(/\D/g, '') : '';
+                                    const msg = `Dear ${inv.customer?.name || 'Customer'},\n\nThis is a gentle reminder regarding your pending invoice ${inv.invoiceNo} dated ${inv.date} for the amount of Rs.${Math.round(inv.total)}. Please arrange the payment at your earliest convenience.\n\nThank you.`;
+                                    
+                                    return (
+                                    <tr key={inv.id} style={{borderBottom:'1px solid #E5E7EB'}}>
+                                      <td style={{padding:'12px'}}>
+                                        <div style={{fontWeight:600,color:'#111827'}}>{inv.customer?.name||'—'}</div>
+                                        <div style={{fontFamily:'monospace',fontSize:10,fontWeight:600,color:'#1D4ED8',whiteSpace:'nowrap',marginTop:2}}>{inv.invoiceNo}</div>
+                                      </td>
+                                      <td style={{padding:'12px',color:'#6B7280',whiteSpace:'nowrap'}}>
+                                        <div>{inv.date}</div>
+                                        <div style={{fontSize:10,color:'#DC2626',fontWeight:600,marginTop:2}}>{getAgeing(inv.date)} pending</div>
+                                      </td>
+                                      <td style={{padding:'12px',fontFamily:'monospace',fontWeight:700,color:'#D97706',whiteSpace:'nowrap'}}>₹{fmtINR(inv.total)}</td>
+                                      <td style={{padding:'12px',whiteSpace:'nowrap'}}>
+                                        <button onClick={()=>togglePayment(inv)} style={{padding:'5px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer',color:'#374151'}}>
+                                          ✅ Mark as Paid
+                                        </button>
+                                      </td>
+                                      <td style={{padding:'12px',textAlign:'right'}}>
+                                        {mobileReady.length >= 10 ? (
+                                          <a href={`https://wa.me/91${mobileReady}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" 
+                                            style={{display:'inline-block',padding:'5px 10px',background:'#22C55E',borderRadius:6,fontSize:10,fontWeight:700,color:'white',textDecoration:'none',marginLeft:4}}>
+                                            💬 WhatsApp Alert
+                                          </a>
+                                        ) : (
+                                          <div style={{display:'inline-block',padding:'5px 10px',background:'#E5E7EB',borderRadius:6,fontSize:10,fontWeight:700,color:'#9CA3AF',marginLeft:4}}>
+                                            🚫 No Mobile
+                                          </div>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )})}
                                 </tbody>
                               </table>
                             </div>
