@@ -1887,26 +1887,29 @@ export default function App() {
 
   async function fetchGstCaptcha() {
     setGstError(''); setGstSuccess(false);
-    try {
-      const res = await fetch('/api/gst/captcha');
-      const json = await res.json();
-      setGstSession(json.sessionId || '');
-      setGstCaptcha(json.captcha || '');
-    } catch(e) { setGstError('Could not load captcha. Try again.'); }
+    // Option B: No captcha needed. Transitioning to simple verification.
+    setGstCaptcha('ready'); 
   }
   async function verifyGst() {
     if (!invoiceCust.gstin || invoiceCust.gstin.length < 15) return setGstError('Enter valid 15-digit GST number');
-    if (!gstCaptchaInput) return setGstError('Enter captcha code');
     setGstVerifying(true); setGstError('');
     try {
       const res = await fetch('/api/gst/verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: gstSession, gstin: invoiceCust.gstin, captcha: gstCaptchaInput })
+        body: JSON.stringify({ gstin: invoiceCust.gstin })
       });
       const json = await res.json();
       if (!res.ok) return setGstError(json.error || 'Verification failed');
-      setInvoiceCust(p => ({ ...p, name: json.tradeName || json.legalName || p.name }));
+      
+      // Auto-fill Trade Name / Legal Name
+      const newName = json.tradeName || json.legalName || invoiceCust.name;
+      setInvoiceCust(p => ({ 
+        ...p, 
+        name: newName,
+        address: json.address || p.address // Auto-fill address if available
+      }));
       setGstSuccess(true);
+      setGstCaptcha(''); // Hide the verification hint
     } catch(e) { setGstError('Verification failed. Try again.'); }
     setGstVerifying(false);
   }
@@ -3308,17 +3311,21 @@ export default function App() {
                                   <button onClick={()=>fetchGstCaptcha()} style={{padding:'7px 8px',background:'#7C3AED',color:'white',border:'none',borderRadius:7,fontSize:10,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>Verify</button>
                                 )}
                               </div>
-                              {gstCaptcha && !gstSuccess && (
-                                <div style={{marginTop:5,background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:7,padding:8}}>
-                                  <div style={{fontSize:9,fontWeight:600,color:'#92400E',marginBottom:4}}>Enter captcha to verify GST</div>
-                                  <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}}>
-                                    <img src={gstCaptcha.startsWith('data:') ? gstCaptcha : 'data:image/png;base64,' + gstCaptcha} alt="captcha" style={{height:36,borderRadius:4,border:'1px solid #E5E7EB'}}/>
-                                    <input value={gstCaptchaInput} onChange={e=>setGstCaptchaInput(e.target.value.toUpperCase())} placeholder="Code" maxLength={6}
-                                      style={{padding:'5px 6px',border:'1px solid #D1D5DB',borderRadius:5,fontSize:12,outline:'none',fontFamily:'monospace',width:70,letterSpacing:3}}/>
-                                    <button onClick={verifyGst} disabled={gstVerifying} style={{padding:'5px 8px',background:'#16A34A',color:'white',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer'}}>{gstVerifying?'...':'Verify'}</button>
-                                    <button onClick={fetchGstCaptcha} style={{padding:'5px 8px',background:'#F3F4F6',border:'1px solid #E5E7EB',borderRadius:5,fontSize:10,cursor:'pointer'}}>↻</button>
+                              {gstCaptcha === 'ready' && !gstSuccess && (
+                                <div style={{marginTop:5,background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:7,padding:10,boxShadow:'0 1px 2px rgba(0,0,0,.05)'}}>
+                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                                    <div style={{fontSize:10,fontWeight:600,color:'#0369A1'}}>Ready to verify GST details.</div>
+                                    <button onClick={verifyGst} disabled={gstVerifying} style={{padding:'6px 12px',background:'#0284C7',color:'white',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer',boxShadow:'0 2px 4px rgba(0,0,0,.1)'}}>
+                                      {gstVerifying ? 'Verifying...' : '⚡ Confirm & Auto-fill'}
+                                    </button>
                                   </div>
-                                  {gstError && <div style={{fontSize:9,color:'#DC2626',marginTop:3}}>{gstError}</div>}
+                                  <div style={{marginTop:8,paddingTop:8,borderTop:'1px dashed #BAE6FD',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                                    <a href={`https://services.gst.gov.in/services/searchtp?gstin=${invoiceCust.gstin}`} target="_blank" rel="noreferrer" style={{fontSize:9,color:'#0369A1',textDecoration:'none',display:'flex',alignItems:'center',gap:3}}>
+                                      🔍 Search on Official GST Portal
+                                    </a>
+                                    <button onClick={() => setGstCaptcha('')} style={{fontSize:9,color:'#64748B',background:'none',border:'none',cursor:'pointer'}}>Cancel</button>
+                                  </div>
+                                  {gstError && <div style={{fontSize:9,color:'#DC2626',marginTop:6,fontWeight:600}}>⚠️ {gstError}</div>}
                                 </div>
                               )}
                             </div>
