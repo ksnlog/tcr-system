@@ -1,10 +1,15 @@
 // pages/api/invoices.js
 // Stores tax invoices generated from the SF Spare Inventory tab
 
-import { getStore } from '../../lib/store';
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 
 export default async function handler(req, res) {
-  const store = getStore();
+  const store = redis;
 
   // ── GET: list invoices for an SF ───────────────────────────────────────────
   if (req.method === 'GET') {
