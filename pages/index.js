@@ -178,6 +178,16 @@ export default function App() {
   const [sfTabNewTechId, setSfTabNewTechId] = useState('');
   const [sfTabNewTechName, setSfTabNewTechName] = useState('');
   const [sfTabNewTechPwd, setSfTabNewTechPwd] = useState('');
+  const [sfTabNewTechLogic, setSfTabNewTechLogic] = useState('logic3');
+  const [sfTabNewTechFixedAmt, setSfTabNewTechFixedAmt] = useState(0);
+  const [sfTabNewTechInstallAmt, setSfTabNewTechInstallAmt] = useState(0);
+  const [sfTabNewTechExtraRates, setSfTabNewTechExtraRates] = useState({
+    copper: 0,
+    stand: 0,
+    cable: 0,
+    drain: 0
+  });
+  const [sfTabTechStats, setSfTabTechStats] = useState({});
   // Master — SF profile editing
   const [editingSfId, setEditingSfId] = useState(null);
   const [sfProfileDraft, setSfProfileDraft] = useState({});
@@ -744,12 +754,20 @@ export default function App() {
         sfId: sfTabSession.sfId,
         techId: sfTabNewTechId.trim().toUpperCase(),
         techName: sfTabNewTechName.trim(),
-        techPassword: sfTabNewTechPwd.trim()
+        techPassword: sfTabNewTechPwd.trim(),
+        revenueSharing: {
+          type: sfTabNewTechLogic,
+          fixedAmt: parseFloat(sfTabNewTechFixedAmt) || 0,
+          installAmt: parseFloat(sfTabNewTechInstallAmt) || 0,
+          extraRates: sfTabNewTechExtraRates
+        }
       })
     });
     const json = await res.json();
     if (json.error) return setSfTabMsg(json.error);
     setSfTabNewTechId(''); setSfTabNewTechName(''); setSfTabNewTechPwd('');
+    setSfTabNewTechLogic('logic3'); setSfTabNewTechFixedAmt(0); setSfTabNewTechInstallAmt(0);
+    setSfTabNewTechExtraRates({ copper: 0, stand: 0, cable: 0, drain: 0 });
     setSfTabMsg('Technician added!'); setTimeout(() => setSfTabMsg(''), 3000);
     loadSfTabData(sfTabSession.sfId);
   }
@@ -785,6 +803,47 @@ export default function App() {
     setSfTabNewTechId(''); setSfTabNewTechName(''); setSfTabNewTechPwd('');
     setShowQuotation(false); setQuotItems([]); setQuotNo(''); setQuotHistory([]);
     setBillRegister([]); setBillRegSearch('');
+  }
+
+  function calculateSfIncome(tech, records) {
+    if (!records || !Array.isArray(records)) return 0;
+    const logic = tech.revenueSharing || { type: 'logic3' };
+    let totalSf = 0;
+
+    records.forEach(r => {
+      const units = parseFloat(r.unitCount) || 1;
+      const custTotal = parseFloat(r.total) || 0;
+
+      if (logic.type === 'logic1') {
+        // Logic 1: SF gets fixed amount per unit
+        totalSf += (parseFloat(logic.fixedAmt) || 0) * units;
+      } else if (logic.type === 'logic2') {
+        // Logic 2: Tech takes a cut, SF gets the rest
+        let techTake = (parseFloat(logic.installAmt) || 0) * units;
+        
+        // Copper mapping
+        const copper = (r.additionalItems || []).find(it => it.no === '2.1' || it.no === '2.2');
+        if (copper) techTake += (parseFloat(logic.extraRates?.copper) || 0) * (parseFloat(copper.qty) || 0);
+        
+        // Stand mapping
+        const stand = (r.additionalItems || []).find(it => it.no === '4');
+        if (stand) techTake += (parseFloat(logic.extraRates?.stand) || 0) * (parseFloat(stand.qty) || 0);
+        
+        // Cable mapping
+        const cable = (r.additionalItems || []).find(it => it.no === '3');
+        if (cable) techTake += (parseFloat(logic.extraRates?.cable) || 0) * (parseFloat(cable.qty) || 0);
+        
+        // Drain mapping
+        const drain = (r.additionalItems || []).find(it => it.no === '5');
+        if (drain) techTake += (parseFloat(logic.extraRates?.drain) || 0) * (parseFloat(drain.qty) || 0);
+
+        totalSf += Math.max(0, custTotal - techTake);
+      } else {
+        // Logic 3: SF takes all
+        totalSf += custTotal;
+      }
+    });
+    return totalSf;
   }
 
   function sfTabGetStockVal(tid) {
@@ -2941,6 +3000,77 @@ export default function App() {
                             style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
                         </div>
                       </div>
+
+                      {/* Revenue Logic Selector */}
+                      <div style={{background:'#F9FAFB',padding:10,borderRadius:10,marginBottom:8,border:'1px solid #F3F4F6'}}>
+                        <label style={{fontSize:10,fontWeight:700,color:'#374151',display:'block',marginBottom:6}}>Revenue Sharing Logic</label>
+                        <div style={{display:'flex',gap:8,marginBottom:10}}>
+                          {[
+                            ['logic1','Logic 1: Fixed per Unit'],
+                            ['logic2','Logic 2: Tech Take-home'],
+                            ['logic3','Logic 3: SF takes all']
+                          ].map(([val,lbl])=>(
+                            <button key={val} onClick={()=>setSfTabNewTechLogic(val)}
+                              style={{flex:1,padding:'6px',fontSize:10,fontWeight:600,borderRadius:6,border:'1.5px solid '+(sfTabNewTechLogic===val?'#1D4ED8':'#E5E7EB'),background:sfTabNewTechLogic===val?'#EFF6FF':'white',color:sfTabNewTechLogic===val?'#1D4ED8':'#6B7280',cursor:'pointer'}}>
+                              {lbl}
+                            </button>
+                          ))}
+                        </div>
+
+                        {sfTabNewTechLogic === 'logic1' && (
+                          <div>
+                            <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Fixed SF Income per Unit (₹)</label>
+                            <input type="number" value={sfTabNewTechFixedAmt} onChange={e=>setSfTabNewTechFixedAmt(e.target.value)}
+                              placeholder="e.g. 500"
+                              style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                            <div style={{fontSize:9,color:'#6B7280',marginTop:4}}>Example: 5 units installed × ₹500 = ₹2500 for Service Centre</div>
+                          </div>
+                        )}
+
+                        {sfTabNewTechLogic === 'logic2' && (
+                          <div>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech Installation Fee / Unit (₹)</label>
+                                <input type="number" value={sfTabNewTechInstallAmt} onChange={e=>setSfTabNewTechInstallAmt(e.target.value)}
+                                  placeholder="e.g. 400"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                              </div>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech Copper Rate / Ft (₹)</label>
+                                <input type="number" value={sfTabNewTechExtraRates.copper} onChange={e=>setSfTabNewTechExtraRates(p=>({...p,copper:e.target.value}))}
+                                  placeholder="e.g. 100"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                              </div>
+                            </div>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech Stand Rate (₹)</label>
+                                <input type="number" value={sfTabNewTechExtraRates.stand} onChange={e=>setSfTabNewTechExtraRates(p=>({...p,stand:e.target.value}))}
+                                  placeholder="e.g. 300"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                              </div>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech Cable / Ft (₹)</label>
+                                <input type="number" value={sfTabNewTechExtraRates.cable} onChange={e=>setSfTabNewTechExtraRates(p=>({...p,cable:e.target.value}))}
+                                  placeholder="e.g. 15"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                              </div>
+                              <div>
+                                <label style={{fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',display:'block',marginBottom:3}}>Tech Drain / Ft (₹)</label>
+                                <input type="number" value={sfTabNewTechExtraRates.drain} onChange={e=>setSfTabNewTechExtraRates(p=>({...p,drain:e.target.value}))}
+                                  placeholder="e.g. 10"
+                                  style={{width:'100%',padding:'7px 8px',border:'1.5px solid #E5E7EB',borderRadius:8,fontSize:12,outline:'none'}}/>
+                              </div>
+                            </div>
+                            <div style={{fontSize:9,color:'#6B7280',marginTop:6}}>Technician takes these amounts; SF gets the remaining customer balance.</div>
+                          </div>
+                        )}
+
+                        {sfTabNewTechLogic === 'logic3' && (
+                          <div style={{fontSize:11,color:'#1D4ED8',fontWeight:500,padding:'6px 0'}}>SF takes 100% of customer payments. Installer is paid via salary.</div>
+                        )}
+                      </div>
                       <button onClick={sfTabAddTech} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,#1D4ED8,#1E40AF)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
                         Add Technician
                       </button>
@@ -2952,18 +3082,70 @@ export default function App() {
                         <div style={{fontSize:11,fontWeight:700,color:'white'}}>👷 Your Technicians ({sfTabTechs.length})</div>
                       </div>
                       {sfTabTechs.length===0&&<div style={{padding:24,textAlign:'center',color:'#9CA3AF',fontSize:12}}>No technicians added yet</div>}
-                      {sfTabTechs.map(t=>(
-                        <div key={t.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',borderBottom:'1px solid #F3F4F6'}}>
-                          <div>
-                            <div style={{fontSize:12,fontWeight:600,color:'#111827'}}>{t.name}</div>
-                            <div style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>{t.id}</div>
+                      {sfTabTechs.map(t=>{
+                        const stats = sfTabTechStats[t.id];
+                        const logic = t.revenueSharing || { type: 'logic3' };
+                        
+                        return (
+                        <div key={t.id} style={{borderBottom:'1px solid #F3F4F6'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px'}}>
+                            <div>
+                              <div style={{fontSize:12,fontWeight:600,color:'#111827'}}>{t.name}</div>
+                              <div style={{fontSize:10,color:'#6B7280',fontFamily:'monospace'}}>
+                                {t.id} · <span style={{fontWeight:700,color:'#1D4ED8'}}>{logic.type.replace('logic','Logic ')}</span>
+                              </div>
+                            </div>
+                            <div style={{display:'flex',gap:6}}>
+                              {!stats && (
+                                <button onClick={async()=>{
+                                  const r=await fetch('/api/records?techId='+t.id);
+                                  const d=await r.json();
+                                  setSfTabTechStats(prev => ({...prev, [t.id]: d}));
+                                }} style={{padding:'4px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:6,fontSize:10,cursor:'pointer',fontWeight:600}}>
+                                  📊 Performance
+                                </button>
+                              )}
+                              <button onClick={()=>sfTabRemoveTech(t.id)}
+                                style={{padding:'4px 10px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:600}}>
+                                Remove
+                              </button>
+                            </div>
                           </div>
-                          <button onClick={()=>sfTabRemoveTech(t.id)}
-                            style={{padding:'4px 10px',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',borderRadius:6,fontSize:11,cursor:'pointer',fontWeight:600}}>
-                            Remove
-                          </button>
+                          
+                          {/* PREVIEW TABLE */}
+                          {stats && (
+                            <div style={{padding:'0 14px 14px'}}>
+                              <div style={{background:'#F8FAFF',borderRadius:10,padding:12,border:'1px solid #DBEAFE'}}>
+                                <div style={{fontSize:11,fontWeight:700,color:'#1E3A8A',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
+                                  <span>📈 Performance Preview</span>
+                                  <span style={{fontSize:9,cursor:'pointer',color:'#6B7280'}} onClick={()=>setSfTabTechStats(p=>{const n={...p};delete n[t.id];return n;})}>✕ Hide</span>
+                                </div>
+                                
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                                  <div style={{background:'white',padding:8,borderRadius:7,textAlign:'center',border:'1px solid #E5E7EB'}}>
+                                    <div style={{fontSize:11,fontWeight:700,color:'#374151'}}>{stats.reduce((acc,r)=>acc+(parseFloat(r.unitCount)||1), 0)}</div>
+                                    <div style={{fontSize:9,color:'#9CA3AF'}}>Units Done</div>
+                                  </div>
+                                  <div style={{background:'white',padding:8,borderRadius:7,textAlign:'center',border:'1px solid #E5E7EB'}}>
+                                    <div style={{fontSize:11,fontWeight:700,color:'#059669'}}>₹{fmtINR(Math.round(stats.reduce((acc,r)=>acc+(parseFloat(r.total)||0), 0)))}</div>
+                                    <div style={{fontSize:9,color:'#9CA3AF'}}>Cust. Total</div>
+                                  </div>
+                                  <div style={{background:'white',padding:8,borderRadius:7,textAlign:'center',border:'1px solid #E5E7EB',background:'#EFF6FF'}}>
+                                    <div style={{fontSize:11,fontWeight:700,color:'#1D4ED8'}}>₹{fmtINR(Math.round(calculateSfIncome(t, stats)))}</div>
+                                    <div style={{fontSize:9,color:'#1D4ED8',fontWeight:600}}>SF Share</div>
+                                  </div>
+                                </div>
+                                
+                                {stats.length > 0 && (
+                                  <div style={{marginTop:8,fontSize:9,color:'#6B7280',fontStyle:'italic',borderTop:'1px dashed #BFDBFE',paddingTop:6}}>
+                                    Based on {stats.length} confirmed job(s). logic applied: {logic.type === 'logic1' ? `₹${logic.fixedAmt} Fixed / unit` : logic.type === 'logic2' ? 'Tech take-home rates applied' : 'SF takes 100%'}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      )})}
                     </div>
                   </div>
                 )}

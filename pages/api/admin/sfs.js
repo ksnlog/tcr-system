@@ -21,7 +21,7 @@ export default async function handler(req, res) {
         const techs = await kv.get(`sf:${sf.id}:technicians`) || [];
         return {
           ...sf,
-          techs: techs.map(({ id, name }) => ({ id, name })), // strip passwords
+          techs: techs.map(({ id, name, revenueSharing }) => ({ id, name, revenueSharing })), // strip passwords
         };
       }));
       return res.status(200).json({ sfs });
@@ -114,7 +114,7 @@ await kv.set(`spares_${sfId}`, { items: [] }); // empty spares catalog
 
       // ── addTech ──
       if (action === 'addTech') {
-        const { sfId, techId, techName, techPassword } = data;
+        const { sfId, techId, techName, techPassword, revenueSharing } = data;
         if (!sfId || !techId || !techName || !techPassword)
           return res.status(400).json({ error: 'sfId, techId, techName and techPassword required' });
 
@@ -125,7 +125,13 @@ await kv.set(`spares_${sfId}`, { items: [] }); // empty spares catalog
         // Add to SF's technician list
         let sfTechs = await kv.get(`sf:${sfId}:technicians`) || [];
         if (sfTechs.find(t => t.id === techId)) return res.status(400).json({ error: `Tech ID ${techId} already exists in this SF` });
-        sfTechs.push({ id: techId, name: techName, password: techPassword });
+        
+        sfTechs.push({ 
+          id: techId, 
+          name: techName, 
+          password: techPassword,
+          revenueSharing: revenueSharing || { type: 'logic3' } // default to SF takes all
+        });
         await kv.set(`sf:${sfId}:technicians`, sfTechs);
 
         // Also add to global technicians list (for stock tracking compatibility)
@@ -171,6 +177,6 @@ await kv.set(`spares_${sfId}`, { items: [] }); // empty spares catalog
 async function hydrateSfs(sfMeta) {
   return Promise.all(sfMeta.map(async (sf) => {
     const techs = await kv.get(`sf:${sf.id}:technicians`) || [];
-    return { ...sf, techs: techs.map(({ id, name }) => ({ id, name })) };
+    return { ...sf, techs: techs.map(({ id, name, revenueSharing }) => ({ id, name, revenueSharing })) };
   }));
 }
