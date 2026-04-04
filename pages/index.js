@@ -3056,19 +3056,21 @@ export default function App() {
 
                     {/* Summary bar */}
                     {!billRegLoading && billRegister.length > 0 && (() => {
+                      const isSearching = !!billRegSearch.trim();
                       const filtered = billRegister.filter(inv =>
-                        !billRegSearch.trim() ||
+                        !isSearching ||
                         (inv.invoiceNo||'').toLowerCase().includes(billRegSearch.toLowerCase()) ||
                         (inv.customer?.name||'').toLowerCase().includes(billRegSearch.toLowerCase())
                       );
-                      const grandTotal = filtered.reduce((s,inv) => s+(parseFloat(inv.total)||0), 0);
+                      const displayInvoices = isSearching ? filtered : filtered.slice(0, 5);
+                      const grandTotal = billRegister.reduce((s,inv) => s+(parseFloat(inv.total)||0), 0);
                       return (
                         <>
                           {/* Stats */}
                           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12}}>
                             {[
                               ['Total Bills', billRegister.length, '#92400E', '#FEF3C7'],
-                              ['Showing', filtered.length, '#1D4ED8', '#EFF6FF'],
+                              ['Showing', displayInvoices.length + (isSearching ? '' : ` / ${billRegister.length}`), '#1D4ED8', '#EFF6FF'],
                               ['Billed Value', '₹'+fmtINR(Math.round(grandTotal)), '#065F46', '#F0FDF4'],
                             ].map(([label,val,color,bg])=>(
                               <div key={label} style={{background:bg,borderRadius:9,padding:'10px 8px',textAlign:'center'}}>
@@ -3079,12 +3081,12 @@ export default function App() {
                           </div>
 
                           {/* Invoice list */}
-                          {filtered.length === 0 && (
+                          {displayInvoices.length === 0 && (
                             <div style={{background:'white',borderRadius:10,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:12}}>
                               No invoices match your search
                             </div>
                           )}
-                          {filtered.length > 0 && (
+                          {displayInvoices.length > 0 && (
                             <div style={{background:'white',borderRadius:12,boxShadow:'0 2px 8px rgba(0,0,0,.06)',overflowX:'auto'}}>
                               <table style={{width:'100%',borderCollapse:'collapse',fontSize:11,textAlign:'left'}}>
                                 <thead>
@@ -3098,7 +3100,7 @@ export default function App() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {filtered.map(inv => (
+                                  {displayInvoices.map(inv => (
                                     <tr key={inv.id} style={{borderBottom:'1px solid #E5E7EB'}}>
                                       <td style={{padding:'12px',fontFamily:'monospace',fontWeight:600,color:'#1D4ED8',whiteSpace:'nowrap'}}>{inv.invoiceNo}</td>
                                       <td style={{padding:'12px',color:'#6B7280',whiteSpace:'nowrap'}}>{inv.date}</td>
