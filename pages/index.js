@@ -1259,6 +1259,13 @@ export default function App() {
       drawTotalRow('NET AMOUNT', '', '', fmtINR(netAmount), true, true);
       y += 5;
 
+      // Payment status (if applicable)
+      if (invoiceData.paymentReceived) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(0, 100, 0);
+        doc.text('PAYMENT RECEIVED (' + (invoiceData.paymentDetails || 'Confirmed') + ')', M, y);
+        y += 5;
+      }
+
       // ── BANK DETAILS ─────────────────────────────────────────────────────
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
       const bankIfsc = sfTabSession?.bankIfsc || '';
@@ -1397,6 +1404,23 @@ export default function App() {
     }
   }
 
+  async function updateInvoiceField(inv, field, val) {
+    if (!sfTabSession?.sfId) return;
+    try {
+      const updates = { [field]: val };
+      const r = await fetch('/api/invoices', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sfId: sfTabSession.sfId, id: inv.id, updates })
+      });
+      if (r.ok) {
+        setBillRegister(prev => prev.map(p => p.id === inv.id ? { ...p, ...updates } : p));
+      }
+    } catch (e) {
+      console.error('Failed to update invoice field');
+    }
+  }
+
   async function exportBillRegisterExcel() {
     try {
       const { utils, writeFile } = await import('xlsx');
@@ -1414,7 +1438,8 @@ export default function App() {
           "Taxable Amt": taxable,
           "Tax Amt": taxAmt,
           "Total Amt": total,
-          "Payment Received": inv.paymentReceived ? 'Yes' : 'No'
+          "Payment Received": inv.paymentReceived ? 'Yes' : 'No',
+          "Payment Detail": inv.paymentDetails || ''
         };
       });
       const ws = utils.json_to_sheet(rows);
@@ -1608,6 +1633,13 @@ export default function App() {
       drawTR('Round Off','','',(roundOff>=0?'+':'')+Math.abs(roundOff).toFixed(2),false,false);
       drawTR('NET AMOUNT','','',fmtINR(netAmount),true,true);
       y+=5;
+
+      // Payment status (above Bank details)
+      if (inv.paymentReceived) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(0, 100, 0);
+        doc.text('PAYMENT RECEIVED (' + (inv.paymentDetails || 'Confirmed') + ')', M, y);
+        y += 5;
+      }
 
       // Bank + words
       const bankIfsc=sfTabSession?.bankIfsc||'', bankAcc=sfTabSession?.bankAcc||'', bankName=sfTabSession?.bankName||'';
@@ -3282,6 +3314,7 @@ export default function App() {
                                     <th style={{padding:'12px',fontWeight:700,color:'#374151'}}>Customer</th>
                                     <th style={{padding:'12px',fontWeight:700,color:'#374151',whiteSpace:'nowrap'}}>Total Amount</th>
                                     <th style={{padding:'12px',fontWeight:700,color:'#374151',whiteSpace:'nowrap'}}>Payment Received</th>
+                                    <th style={{padding:'12px',fontWeight:700,color:'#374151',whiteSpace:'nowrap'}}>Payment Detail</th>
                                     <th style={{padding:'12px',fontWeight:700,color:'#374151',textAlign:'right'}}>Action</th>
                                   </tr>
                                 </thead>
@@ -3296,9 +3329,21 @@ export default function App() {
                                       </td>
                                       <td style={{padding:'12px',fontFamily:'monospace',fontWeight:700,color:'#059669',whiteSpace:'nowrap'}}>₹{fmtINR(inv.total)}</td>
                                       <td style={{padding:'12px',whiteSpace:'nowrap'}}>
-                                        <button onClick={()=>togglePayment(inv)} style={{padding:'4px 8px',borderRadius:6,border:'none',fontSize:10,fontWeight:700,cursor:'pointer',backgroundColor:inv.paymentReceived?'#D1FAE5':'#FEF2F2',color:inv.paymentReceived?'#065F46':'#DC2626'}}>
+                                        <button onClick={()=>togglePayment(inv)} style={{padding:'4px 8px',borderRadius:6,border:'none',fontSize:10,fontWeight:700,cursor:'pointer',backgroundColor:inv.paymentReceived?'#D1FAE5':'#FEF2F2',color:inv.paymentReceived?'#065F46':'#DC2626',minWidth:40}}>
                                           {inv.paymentReceived ? 'Yes' : 'No'}
                                         </button>
+                                      </td>
+                                      <td style={{padding:'12px',whiteSpace:'nowrap'}}>
+                                        {inv.paymentReceived ? (
+                                          <input 
+                                            value={inv.paymentDetails || ''} 
+                                            onChange={(e) => updateInvoiceField(inv, 'paymentDetails', e.target.value)}
+                                            placeholder="Cash, UTR, Online..."
+                                            style={{padding:'4px 8px',border:'1px solid #D1D5DB',borderRadius:6,fontSize:10,width:'120px',outline:'none'}}
+                                          />
+                                        ) : (
+                                          <span style={{color:'#9CA3AF',fontSize:10}}>—</span>
+                                        )}
                                       </td>
                                       <td style={{padding:'12px',textAlign:'right'}}>
                                         <button onClick={()=>reprintInvoicePdf(inv)} style={{padding:'5px 10px',background:'#F3F4F6',border:'1px solid #D1D5DB',borderRadius:6,fontSize:10,fontWeight:600,cursor:'pointer',color:'#374151',whiteSpace:'nowrap'}}>
