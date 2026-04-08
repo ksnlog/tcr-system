@@ -94,9 +94,13 @@ export default function ConfirmPage() {
     });
     y+=32;
     sH('Installation Charges',[40,40,40]);
-    const rows=[['1','Standard Installation (Free)','--','--','Rs.0']];
-    (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/Ft',i.qty+' Ft','Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
-    (d.actualItems||[]).filter(i=>i.actual>0).forEach(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; rows.push([i.no,i.desc,i.unit||'Actual',i.actual,'Rs.'+Number(amt).toLocaleString('en-IN')]); });
+    const stdInstAmt = (d.tonnage==='window'&&d.windowType==='non-inverter') ? 500*(parseInt(d.unitCount)||1) : 0;
+    const stdInstRow = stdInstAmt>0
+      ? ['1','Standard Installation (Window - Non Inverter)','Rs.500/Unit',(parseInt(d.unitCount)||1)+' Unit','Rs.'+stdInstAmt.toLocaleString('en-IN')]
+      : ['1','Standard Installation (Free)','--','--','Rs.0'];
+    const rows=[stdInstRow];
+    (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/'+(i.unit||'Ft'),i.qty+' '+(i.unit||'Ft'),'Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
+    (d.actualItems||[]).filter(i=>i.actual>0).forEach(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; const descStr=(i.desc.startsWith('Miscellaneous')&&d.miscDesc)?'Miscellaneous: '+d.miscDesc:i.desc; const rateStr=i.rate>0?'Rs.'+i.rate+'/'+(i.unit||''):'--'; rows.push([i.no,descStr,rateStr,i.actual+' '+(i.unit||''),'Rs.'+Number(amt).toLocaleString('en-IN')]); });
     doc.autoTable({ startY:y, margin:{left:M,right:M}, head:[['#','Description','Rate','Qty','Amount']], body:rows, styles:{fontSize:8,cellPadding:2.5,textColor:[50,50,50]}, headStyles:{fillColor:[30,30,30],textColor:[255,255,255],fontStyle:'bold',fontSize:8}, alternateRowStyles:{fillColor:[248,248,248]}, columnStyles:{0:{cellWidth:10},1:{cellWidth:95},2:{cellWidth:28},3:{cellWidth:20},4:{cellWidth:25,halign:'right'}}, theme:'grid' });
     y=doc.lastAutoTable.finalY+6;
     const bx=W-M-70, bw=70, fR=n=>'Rs.'+Number(n).toLocaleString('en-IN');
@@ -137,6 +141,7 @@ export default function ConfirmPage() {
     window.open('https://wa.me/?text='+msg,'_blank');
   }
 
+  const windowInstCharge = (data?.tonnage==='window'&&data?.windowType==='non-inverter') ? 500*(parseInt(data?.unitCount)||1) : 0;
   const sub=Number(data?.sub||0), gst=Number(data?.gst||0), total=Number(data?.total||0);
 
   return (
@@ -218,9 +223,9 @@ export default function ConfirmPage() {
               <table className="ct">
                 <thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Amount</th></tr></thead>
                 <tbody>
-                  <tr><td>1</td><td className="dc">Standard Installation</td><td>—</td><td><span className="fb">₹0</span></td></tr>
-                  {(data.additionalItems||[]).filter(i=>i.qty>0).map(i=><tr key={i.no}><td>{i.no}</td><td className="dc">{i.desc}</td><td style={{textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10}}>{i.qty} Ft</td><td>{fmtINR(i.rate*i.qty)}</td></tr>)}
-                  {(data.actualItems||[]).filter(i=>i.actual>0).map(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; return <tr key={i.no}><td>{i.no}</td><td className="dc">{i.desc}</td><td style={{textAlign:'center'}}>{i.actual} {i.unit||''}</td><td>{fmtINR(amt)}</td></tr>; })}
+                  <tr><td>1</td><td className="dc">Standard Installation{data.tonnage==='window'&&data.windowType==='non-inverter'?' (Non-Inverter)':''}</td><td>{data.tonnage==='window'&&data.windowType==='non-inverter'?(parseInt(data.unitCount)||1)+' Unit':'—'}</td><td>{data.tonnage==='window'&&data.windowType==='non-inverter'?fmtINR(500*(parseInt(data.unitCount)||1)):<span className="fb">₹0</span>}</td></tr>
+                  {(data.additionalItems||[]).filter(i=>i.qty>0).map(i=><tr key={i.no}><td>{i.no}</td><td className="dc">{i.desc}{i.rate>0?<small style={{color:'#6B7280'}}> (₹{i.rate}/{i.unit||'Unit'})</small>:null}</td><td style={{textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10}}>{i.qty} {i.unit||'Ft'}</td><td>{fmtINR(i.rate*i.qty)}</td></tr>)}
+                  {(data.actualItems||[]).filter(i=>i.actual>0).map(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; const descStr=(i.desc.startsWith('Miscellaneous')&&data.miscDesc)?'Miscellaneous: '+data.miscDesc:i.desc; return <tr key={i.no}><td>{i.no}</td><td className="dc">{descStr}{i.rate>0?<small style={{color:'#6B7280'}}> (₹{i.rate}/{i.unit||'Unit'})</small>:null}</td><td style={{textAlign:'center'}}>{i.actual} {i.unit||''}</td><td>{fmtINR(amt)}</td></tr>; })}
                 </tbody>
               </table>
             </div>
