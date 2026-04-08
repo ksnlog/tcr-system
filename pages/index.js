@@ -61,6 +61,7 @@ export default function App() {
   const [custStand, setCustStand] = useState(false);
   const [custMaterials, setCustMaterials] = useState(false);
   const [miscDesc, setMiscDesc] = useState('');
+  const [windowType, setWindowType] = useState(''); // 'inverter' | 'non-inverter'
   const [screen, setScreen] = useState("form");
   const [token, setToken] = useState("");
   const [waLink, setWaLink] = useState("");
@@ -222,6 +223,8 @@ export default function App() {
   // ── TCR Functions ──────────────────────────────────────────────────────────
   function calcTotals() {
     const ton = f.tonnage; let sub = 0;
+    // Window non-inverter: standard installation is chargeable at Rs.500/unit
+    if (ton === 'window' && windowType === 'non-inverter') sub += 500 * (parseInt(f.unitCount) || 1);
     addItems.forEach(it => {
       if (isDisabled(it, ton)) return;
       const rate = effectiveRate(it);
@@ -247,6 +250,7 @@ export default function App() {
   }
 
   function effectiveRate(it) {
+    if (it.no === "6" && f.tonnage === "window") return 500; // Window dismantling = Rs.500
     if (it.no==="4") {
       if (custStand) return 250;
       return (f.tonnage==="2.0+"||f.tonnage==="2.0") ? 1200 : 750;
@@ -296,6 +300,8 @@ export default function App() {
       ...f,
       sfId: sessionTech?.sfId,              // ← SF scope
       units,
+      miscDesc,
+      windowType,
       additionalItems: addItems.map(it => ({...it, rate: effectiveRate(it)})),
       actualItems: actItems,
       sub, gst, total
@@ -391,9 +397,13 @@ export default function App() {
       });
       y+=32;
       sH('Installation Charges',[40,40,40]);
-      const rows=[['1','Standard Installation (Free)','--','--','Rs.0']];
-      (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/Ft',i.qty+' Ft','Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
-      (d.actualItems||[]).filter(i=>i.actual>0).forEach(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; rows.push([i.no,i.desc,i.unit||'Actual',i.actual,'Rs.'+Number(amt).toLocaleString('en-IN')]); });
+      const stdInstAmt = (d.tonnage==='window'&&d.windowType==='non-inverter') ? 500*(parseInt(d.unitCount)||1) : 0;
+      const stdInstRow = stdInstAmt>0
+        ? ['1','Standard Installation (Window - Non Inverter)','Rs.500/Unit',(parseInt(d.unitCount)||1)+' Unit','Rs.'+stdInstAmt.toLocaleString('en-IN')]
+        : ['1','Standard Installation (Free)','--','--','Rs.0'];
+      const rows=[stdInstRow];
+      (d.additionalItems||[]).filter(i=>i.qty>0).forEach(i=>rows.push([i.no,i.desc,'Rs.'+i.rate+'/'+(i.unit||'Ft'),i.qty+' '+(i.unit||'Ft'),'Rs.'+(i.rate*i.qty).toLocaleString('en-IN')]));
+      (d.actualItems||[]).filter(i=>i.actual>0).forEach(i=>{ const amt=i.rate>0?i.rate*i.actual:i.actual; const descStr=(i.desc.startsWith('Miscellaneous')&&d.miscDesc)?'Miscellaneous: '+d.miscDesc:i.desc; const rateStr=i.rate>0?'Rs.'+i.rate+'/'+(i.unit||''):i.rate===0&&i.actual?'--':'--'; rows.push([i.no,descStr,rateStr,i.actual+' '+(i.unit||''),'Rs.'+Number(amt).toLocaleString('en-IN')]); });
       doc.autoTable({ startY:y, margin:{left:M,right:M}, head:[['#','Description','Rate','Qty','Amount']], body:rows, styles:{fontSize:8,cellPadding:2.5,textColor:[50,50,50]}, headStyles:{fillColor:[30,30,30],textColor:[255,255,255],fontStyle:'bold',fontSize:8}, alternateRowStyles:{fillColor:[248,248,248]}, columnStyles:{0:{cellWidth:10},1:{cellWidth:95},2:{cellWidth:28},3:{cellWidth:20},4:{cellWidth:25,halign:'right'}}, theme:'grid' });
       y=doc.lastAutoTable.finalY+6;
       const bx=W-M-70, bw=70, fR=n=>'Rs.'+Number(n).toLocaleString('en-IN');
@@ -461,7 +471,7 @@ export default function App() {
     setAddItems(additionalItems()); setActItems(actualItems()); setActSelected([]);
     setErr(""); setToken(""); setWaLink(""); setDoneData(null); setRemaining(1800);
     pdfBlobRef.current=null; gpsRef.current=null;
-    setCustStand(false); setCustMaterials(false); setMiscDesc('');
+    setCustStand(false); setCustMaterials(false); setMiscDesc(''); setWindowType('');
   }
 
   function fullLogout() {
@@ -2220,9 +2230,22 @@ export default function App() {
                       <div style={{fontSize:"9.5px",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>AC Tonnage / Type *</div>
                       <div className="ton-grid">
                         {tonOptions.map(o => (
-                          <div key={o.v} className={"ton-opt"+(f.tonnage===o.v?" sel":"")} onClick={()=>field("tonnage",o.v)}>{o.l}</div>
+                          <div key={o.v} className={"ton-opt"+(f.tonnage===o.v?" sel":"")} onClick={()=>{field("tonnage",o.v); if(o.v!=='window') setWindowType('');}}>{o.l}</div>
                         ))}
                       </div>
+                      {f.tonnage === 'window' && (
+                        <div style={{marginTop:10,padding:'10px 12px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:9}}>
+                          <div style={{fontSize:10,fontWeight:700,color:'#1E40AF',marginBottom:8,textTransform:'uppercase',letterSpacing:'.5px'}}>Window AC Type *</div>
+                          <div style={{display:'flex',gap:8}}>
+                            {[['inverter','Inverter (Free Install)'],['non-inverter','Non-Inverter (₹500/Unit)']].map(([v,l])=>(
+                              <div key={v} onClick={()=>setWindowType(v)}
+                                style={{flex:1,padding:'8px 10px',borderRadius:9,border:windowType===v?'2px solid #3B82F6':'1.5px solid #E5E7EB',background:windowType===v?'#DBEAFE':'white',cursor:'pointer',textAlign:'center',fontSize:11,fontWeight:windowType===v?700:500,color:windowType===v?'#1D4ED8':'#6B7280'}}>
+                                {windowType===v?'✓ ':''}{l}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="fg" style={{marginBottom:8}}>
                       <div className="field"><label>No. of Units</label>
@@ -2280,9 +2303,15 @@ export default function App() {
                       <thead><tr><th>#</th><th>Description</th><th style={{textAlign:"center"}}>Rate</th><th style={{textAlign:"center"}}>Qty (Ft)</th><th style={{textAlign:"right"}}>Amount</th></tr></thead>
                       <tbody>
                         <tr>
-                          <td className="no">1</td><td className="dc">Standard Installation as per Scope of Work</td>
-                          <td style={{textAlign:"center",color:"#16A34A",fontWeight:600,fontSize:10.5}}>Free</td>
-                          <td style={{textAlign:"center"}}>—</td><td className="ra" style={{color:"#16A34A"}}>₹0</td>
+                          <td className="no">1</td><td className="dc">Standard Installation as per Scope of Work{f.tonnage==='window'&&windowType==='non-inverter'?<small style={{color:'#DC2626'}}> (Non-Inverter)</small>:null}</td>
+                          {f.tonnage==='window'&&windowType==='non-inverter' ? (<>
+                            <td style={{textAlign:"center",fontFamily:"DM Mono,monospace",fontSize:10}}>₹500/Unit</td>
+                            <td style={{textAlign:"center"}}>{f.unitCount||1} Unit</td>
+                            <td className="ra" style={{color:"#DC2626"}}>₹{fmtINR(500*(parseInt(f.unitCount)||1))}</td>
+                          </>) : (<>
+                            <td style={{textAlign:"center",color:"#16A34A",fontWeight:600,fontSize:10.5}}>Free</td>
+                            <td style={{textAlign:"center"}}>—</td><td className="ra" style={{color:"#16A34A"}}>₹0</td>
+                          </>)}
                         </tr>
                         {addItems.map((it,i) => {
                           const dis = isDisabled(it, f.tonnage); const rate = effectiveRate(it); const amt = rate * (parseFloat(it.qty)||0);
